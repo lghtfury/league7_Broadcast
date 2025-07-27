@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>League 7 Stream Overlay</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    #overlay {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+    #background {
+      width: 100%;
+      height: auto;
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+    .team {
+      position: absolute;
+      color: white;
+      font-weight: bold;
+      font-size: 1.8em;
+      text-shadow: 2px 2px 4px #000;
+    }
+    .score {
+      position: absolute;
+      color: gold;
+      font-size: 2em;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px #000;
+    }
+    #teamA {
+      top: 10px;
+      left: 140px;
+    }
+    #scoreA {
+      top: 50px;
+      left: 175px;
+    }
+    #teamB {
+      top: 10px;
+      right: 140px;
+    }
+    #scoreB {
+      top: 50px;
+      right: 175px;
+    }
+  </style>
+</head>
+<body>
+  <div id="overlay">
+    <img id="background" src="League%207%20overlay%20(2).png" alt="Overlay background" />
+    <div id="teamA" class="team">Team Blue</div>
+    <div id="scoreA" class="score">0</div>
+    <div id="teamB" class="team">Team Red</div>
+    <div id="scoreB" class="score">0</div>
+  </div>
+</body>
+</html>
