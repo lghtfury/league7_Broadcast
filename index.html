@@ -4,30 +4,31 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>League 7 Overlay</title>
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
   <style>
     html, body {
       margin: 0;
       padding: 0;
       background: transparent;
       overflow: hidden;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: 'IM Fell English SC', serif;
       width: 100%;
       height: 100%;
     }
 
     #overlay {
       position: relative;
-      width: 100vw;
-      height: 100vh;
+      width: 1920px;
+      height: 1080px;
       box-sizing: border-box;
       border: 15px solid;
-      border-image: linear-gradient(135deg, #7fff00, #8300ff) 1;
+      border-image: linear-gradient(135deg, #ff0000, #0000ff) 1;
       z-index: 1;
     }
 
     #background {
       width: 100%;
-      height: auto;
+      height: 100%;
       position: absolute;
       top: 0;
       left: 0;
@@ -35,53 +36,146 @@
       z-index: 0;
     }
 
-    .team {
+    .team-wrapper {
       position: absolute;
+      width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 2;
+      top: 25px;
+    }
+
+    #teamA-wrapper {
+      left: 300px;
+    }
+
+    #teamB-wrapper {
+      right: 300px;
+    }
+
+    .team {
       color: white;
       font-weight: bold;
-      font-size: 1.8em;
+      font-size: 2.4em;
       text-shadow: 2px 2px 4px #000;
-      z-index: 2;
+      text-align: center;
     }
 
     .score {
-      position: absolute;
-      color: black;
+      color: gold;
       font-weight: bold;
-      font-size: 2em;
-      text-shadow: none;
-      z-index: 2;
+      font-size: 3em;
+      margin-top: 5px;
+      text-shadow: 2px 2px 4px #000;
     }
 
-    /* Updated positions to align inside banners and gold plates */
-    #teamA {
-      top: 25px;
-      left: 340px;
+    .team-icon {
+      width: 100px;
+      height: 100px;
+      margin-bottom: 10px;
     }
 
-    #scoreA {
-      top: 85px;
-      left: 385px;
+    #controlPanel {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      padding: 15px;
+      border-radius: 10px;
+      color: white;
+      font-size: 16px;
+      z-index: 9999;
     }
 
-    #teamB {
-      top: 25px;
-      right: 340px;
-    }
-
-    #scoreB {
-      top: 85px;
-      right: 385px;
+    select, input {
+      font-family: 'IM Fell English SC', serif;
+      font-size: 16px;
+      margin: 5px;
     }
   </style>
 </head>
 <body>
   <div id="overlay">
     <img id="background" src="overlay.png" alt="Overlay background" />
-    <div id="teamA" class="team">Nocturn Ravens</div>
-    <div id="scoreA" class="score">7</div>
-    <div id="teamB" class="team">Nimbus Nighthawks</div>
-    <div id="scoreB" class="score">12</div>
+
+    <div id="teamA-wrapper" class="team-wrapper">
+      <img id="iconA" class="team-icon" src="Air_Logo.png" alt="Team A Logo">
+      <div id="teamA" class="team">Team A</div>
+      <div id="scoreA" class="score">0</div>
+    </div>
+
+    <div id="teamB-wrapper" class="team-wrapper">
+      <img id="iconB" class="team-icon" src="Air_Logo.png" alt="Team B Logo">
+      <div id="teamB" class="team">Team B</div>
+      <div id="scoreB" class="score">0</div>
+    </div>
   </div>
+
+  <div id="controlPanel">
+    <label>Font Size:
+      <select id="fontSize">
+        <option value="24">24</option>
+        <option value="32">32</option>
+        <option value="40">40</option>
+        <option value="48" selected>48</option>
+        <option value="56">56</option>
+      </select>
+    </label>
+    <br />
+    <label>Team A:
+      <select id="selectTeamA">
+        <option>Team A</option>
+        <option>Team B</option>
+        <option>Team C</option>
+        <option>Team D</option>
+      </select>
+    </label>
+    <label>Score A:
+      <input type="number" id="scoreInputA" value="0" />
+    </label>
+    <br />
+    <label>Team B:
+      <select id="selectTeamB">
+        <option>Team A</option>
+        <option>Team B</option>
+        <option>Team C</option>
+        <option>Team D</option>
+      </select>
+    </label>
+    <label>Score B:
+      <input type="number" id="scoreInputB" value="0" />
+    </label>
+    <br />
+    <label>Border Gradient:
+      <input type="text" id="gradientA" value="#ff0000" size="7" /> →
+      <input type="text" id="gradientB" value="#0000ff" size="7" />
+    </label>
+    <br />
+    <button onclick="updateOverlay()">Update</button>
+  </div>
+
+  <script>
+    function updateOverlay() {
+      const teamAName = document.getElementById("selectTeamA").value;
+      const teamBName = document.getElementById("selectTeamB").value;
+      const scoreA = document.getElementById("scoreInputA").value;
+      const scoreB = document.getElementById("scoreInputB").value;
+      const fontSize = document.getElementById("fontSize").value + 'px';
+      const gradientStart = document.getElementById("gradientA").value;
+      const gradientEnd = document.getElementById("gradientB").value;
+
+      document.getElementById("teamA").textContent = teamAName;
+      document.getElementById("teamB").textContent = teamBName;
+      document.getElementById("scoreA").textContent = scoreA;
+      document.getElementById("scoreB").textContent = scoreB;
+
+      document.getElementById("teamA").style.fontSize = fontSize;
+      document.getElementById("teamB").style.fontSize = fontSize;
+
+      document.getElementById("overlay").style.borderImage = `linear-gradient(135deg, ${gradientStart}, ${gradientEnd}) 1`;
+    }
+  </script>
 </body>
 </html>
