@@ -1,58 +1,203 @@
-.team {
-  position: absolute;
-  font-weight: bold;
-  font-size: 48px;
-  color: white;
-  text-shadow: 2px 2px 4px #000;
-  z-index: 3;
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>League 7 Overlay</title>
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      overflow: hidden;
+      font-family: 'IM Fell English SC', serif;
+      width: 100%;
+      height: 100%;
+    }
 
-.score {
-  position: absolute;
-  font-weight: bold;
-  font-size: 56px;
-  color: gold;
-  text-shadow: 2px 2px 4px #000;
-  z-index: 3;
-  width: 120px;
-  text-align: center;
-}
+    #overlay {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      box-sizing: border-box;
+      border: 15px solid;
+      border-image: linear-gradient(135deg, #ff0000, #0000ff) 1;
+      z-index: 1;
+    }
 
-/* Team A (blue banner left) */
-#teamA {
-  top: 20px;       /* Move up into blue banner */
-  left: 400px;     /* Adjust horizontally into banner center */
-}
+    #background {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
 
-#scoreA {
-  top: 100px;      /* This is where the gold plaque is */
-  left: 435px;
-}
+    .team {
+      position: absolute;
+      font-weight: bold;
+      font-size: 48px;
+      color: white;
+      text-shadow: 2px 2px 4px #000;
+      z-index: 3;
+    }
 
-/* Team B (red banner right) */
-#teamB {
-  top: 20px;
-  right: 400px;
-}
+    .score {
+      position: absolute;
+      font-weight: bold;
+      font-size: 56px;
+      color: gold;
+      text-shadow: 2px 2px 4px #000;
+      z-index: 3;
+      width: 120px;
+      text-align: center;
+    }
 
-#scoreB {
-  top: 100px;
-  right: 435px;
-}
+    /* Team A (blue banner left) */
+    #teamA {
+      top: 20px;
+      left: 400px;
+    }
 
-/* Logos (optional: adjust if needed) */
-.team-icon {
-  width: 80px;
-  height: 80px;
-  position: absolute;
-  top: 5px;
-  z-index: 2;
-}
+    #scoreA {
+      top: 100px;
+      left: 435px;
+    }
 
-#iconA {
-  left: 330px;
-}
+    /* Team B (red banner right) */
+    #teamB {
+      top: 20px;
+      right: 400px;
+    }
 
-#iconB {
-  right: 330px;
-}
+    #scoreB {
+      top: 100px;
+      right: 435px;
+    }
+
+    /* Logos */
+    .team-icon {
+      width: 80px;
+      height: 80px;
+      position: absolute;
+      top: 5px;
+      z-index: 2;
+    }
+
+    #iconA {
+      left: 330px;
+    }
+
+    #iconB {
+      right: 330px;
+    }
+
+    #controlPanel {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      padding: 15px;
+      border-radius: 10px;
+      color: white;
+      font-size: 16px;
+      z-index: 9999;
+    }
+
+    select, input {
+      font-family: 'IM Fell English SC', serif;
+      font-size: 16px;
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="overlay">
+    <img id="background" src="overlay.png" alt="Overlay background" />
+
+    <!-- Team Logos -->
+    <img id="iconA" class="team-icon" src="Air_Logo.png" alt="Team A Logo">
+    <img id="iconB" class="team-icon" src="Air_Logo.png" alt="Team B Logo">
+
+    <!-- Team Names -->
+    <div id="teamA" class="team">Team A</div>
+    <div id="teamB" class="team">Team B</div>
+
+    <!-- Scores -->
+    <div id="scoreA" class="score">0</div>
+    <div id="scoreB" class="score">0</div>
+  </div>
+
+  <!-- Control Panel -->
+  <div id="controlPanel">
+    <label>Font Size:
+      <select id="fontSize">
+        <option value="24">24</option>
+        <option value="32">32</option>
+        <option value="40">40</option>
+        <option value="48" selected>48</option>
+        <option value="56">56</option>
+      </select>
+    </label>
+    <br />
+    <label>Team A:
+      <select id="selectTeamA">
+        <option>Team A</option>
+        <option>Team B</option>
+        <option>Team C</option>
+        <option>Team D</option>
+      </select>
+    </label>
+    <label>Score A:
+      <input type="number" id="scoreInputA" value="0" />
+    </label>
+    <br />
+    <label>Team B:
+      <select id="selectTeamB">
+        <option>Team A</option>
+        <option>Team B</option>
+        <option>Team C</option>
+        <option>Team D</option>
+      </select>
+    </label>
+    <label>Score B:
+      <input type="number" id="scoreInputB" value="0" />
+    </label>
+    <br />
+    <label>Border Gradient:
+      <input type="text" id="gradientA" value="#ff0000" size="7" /> →
+      <input type="text" id="gradientB" value="#0000ff" size="7" />
+    </label>
+    <br />
+    <button onclick="updateOverlay()">Update</button>
+  </div>
+
+  <!-- Script -->
+  <script>
+    function updateOverlay() {
+      const teamAName = document.getElementById("selectTeamA").value;
+      const teamBName = document.getElementById("selectTeamB").value;
+      const scoreA = document.getElementById("scoreInputA").value;
+      const scoreB = document.getElementById("scoreInputB").value;
+      const fontSize = document.getElementById("fontSize").value + 'px';
+      const gradientStart = document.getElementById("gradientA").value;
+      const gradientEnd = document.getElementById("gradientB").value;
+
+      document.getElementById("teamA").textContent = teamAName;
+      document.getElementById("teamB").textContent = teamBName;
+      document.getElementById("scoreA").textContent = scoreA;
+      document.getElementById("scoreB").textContent = scoreB;
+
+      document.getElementById("teamA").style.fontSize = fontSize;
+      document.getElementById("teamB").style.fontSize = fontSize;
+
+      document.getElementById("overlay").style.borderImage =
+        `linear-gradient(135deg, ${gradientStart}, ${gradientEnd}) 1`;
+    }
+  </script>
+</body>
+</html>
