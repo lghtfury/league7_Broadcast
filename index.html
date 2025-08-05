@@ -36,44 +36,62 @@
       z-index: 0;
     }
 
-    .team-wrapper {
-      position: absolute;
-      width: 400px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      z-index: 2;
-      top: 25px;
-    }
-
-    #teamA-wrapper {
-      left: 300px;
-    }
-
-    #teamB-wrapper {
-      right: 300px;
-    }
-
-    .team {
-      color: white;
-      font-weight: bold;
-      font-size: 2.4em;
-      text-shadow: 2px 2px 4px #000;
-      text-align: center;
-    }
-
-    .score {
-      color: gold;
-      font-weight: bold;
-      font-size: 3em;
-      margin-top: 5px;
-      text-shadow: 2px 2px 4px #000;
-    }
-
     .team-icon {
       width: 100px;
       height: 100px;
-      margin-bottom: 10px;
+      position: absolute;
+      top: 10px;
+      z-index: 2;
+    }
+
+    #iconA {
+      left: 335px;
+    }
+
+    #iconB {
+      right: 335px;
+    }
+
+    .team {
+      position: absolute;
+      font-weight: bold;
+      font-size: 48px;
+      color: white;
+      text-shadow: 2px 2px 4px #000;
+      z-index: 3;
+    }
+
+    .score {
+      position: absolute;
+      font-weight: bold;
+      font-size: 56px;
+      color: gold;
+      text-shadow: 2px 2px 4px #000;
+      z-index: 3;
+      width: 120px;
+      text-align: center;
+    }
+
+    /* Team A (blue banner) */
+    #teamA {
+      top: 75px;
+      left: 410px;
+    }
+
+    #scoreA {
+      top: 150px;
+      left: 435px;
+    }
+
+    /* Team B (red banner) */
+    #teamB {
+      top: 75px;
+      right: 410px;
+    }
+
+    #scoreB {
+      top: 150px;
+      right: 435px;
     }
 
     #controlPanel {
@@ -100,17 +118,15 @@
   <div id="overlay">
     <img id="background" src="overlay.png" alt="Overlay background" />
 
-    <div id="teamA-wrapper" class="team-wrapper">
-      <img id="iconA" class="team-icon" src="Air_Logo.png" alt="Team A Logo">
-      <div id="teamA" class="team">Team A</div>
-      <div id="scoreA" class="score">0</div>
-    </div>
+    <img id="iconA" class="team-icon" src="Air_Logo.png" alt="Team A Logo">
+    <img id="iconB" class="team-icon" src="Air_Logo.png" alt="Team B Logo">
 
-    <div id="teamB-wrapper" class="team-wrapper">
-      <img id="iconB" class="team-icon" src="Air_Logo.png" alt="Team B Logo">
-      <div id="teamB" class="team">Team B</div>
-      <div id="scoreB" class="score">0</div>
-    </div>
+    <!-- Team Names and Scores -->
+    <div id="teamA" class="team">Team A</div>
+    <div id="scoreA" class="score">0</div>
+
+    <div id="teamB" class="team">Team B</div>
+    <div id="scoreB" class="score">0</div>
   </div>
 
   <div id="controlPanel">
@@ -174,7 +190,8 @@
       document.getElementById("teamA").style.fontSize = fontSize;
       document.getElementById("teamB").style.fontSize = fontSize;
 
-      document.getElementById("overlay").style.borderImage = `linear-gradient(135deg, ${gradientStart}, ${gradientEnd}) 1`;
+      document.getElementById("overlay").style.borderImage =
+        `linear-gradient(135deg, ${gradientStart}, ${gradientEnd}) 1`;
     }
   </script>
 </body>
