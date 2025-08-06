@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>League 7 Overlay</title>
   <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
   <style>
@@ -22,7 +22,6 @@
       height: 1080px;
       box-sizing: border-box;
       border: 15px solid;
-      border-image: linear-gradient(135deg, #000000, #ff0000, #0000ff, #ffffff) 1;
       z-index: 1;
     }
 
@@ -39,9 +38,12 @@
     .team {
       position: absolute;
       font-weight: bold;
+      font-size: 48px;
       color: white;
       text-shadow: 2px 2px 4px #000;
       z-index: 3;
+      transform: translateX(-50%);
+      white-space: nowrap;
     }
 
     .score {
@@ -51,25 +53,29 @@
       color: black;
       text-shadow: 2px 2px 4px #000;
       z-index: 3;
-      width: 90px;
+      width: 120px;
       text-align: center;
     }
 
-    #teamA { top: 35px; left: 390px; }
-    #teamB { top: 35px; left: 1074px; }
+    #teamA {
+      top: 35px;
+      left: 470px;
+    }
+    #teamB {
+      top: 35px;
+      left: 1440px;
+      transform: translateX(-50%);
+    }
 
-#scoreA {
-  top: 87px;
-  left: 595px;
-  transform: translateX(-50%);
-}
+    #scoreA {
+      top: 82px;
+      left: 555px;
+    }
 
-#scoreB {
-  top: 86px;
-  right: 595px;
-  transform: translateX(50%);
-}
-
+    #scoreB {
+      top: 82px;
+      left: 1276px;
+    }
 
     #controlPanel {
       position: absolute;
@@ -95,109 +101,85 @@
   <div id="overlay">
     <img id="background" src="overlay.png" alt="Overlay background" />
 
+    <!-- Team Names -->
     <div id="teamA" class="team">Team A</div>
     <div id="teamB" class="team">Team B</div>
 
+    <!-- Scores -->
     <div id="scoreA" class="score">0</div>
     <div id="scoreB" class="score">0</div>
   </div>
 
+  <!-- Control Panel -->
   <div id="controlPanel">
     <label>Team A:
       <select id="selectTeamA"></select>
+      Score A: <input type="number" id="scoreInputA" value="0" />
+      Font Size A: <input type="number" id="fontSizeA" value="48" />
     </label>
-    <label>Score A:
-      <input type="number" id="scoreInputA" value="0" />
-    </label>
-    <label>Font Size A:
-      <input type="number" id="fontSizeA" value="48" />
-    </label>
-    <br/>
+    <br />
     <label>Team B:
       <select id="selectTeamB"></select>
+      Score B: <input type="number" id="scoreInputB" value="0" />
+      Font Size B: <input type="number" id="fontSizeB" value="48" />
     </label>
-    <label>Score B:
-      <input type="number" id="scoreInputB" value="0" />
-    </label>
-    <label>Font Size B:
-      <input type="number" id="fontSizeB" value="48" />
-    </label>
-    <br/>
+    <br />
     <button onclick="updateOverlay()">Update</button>
   </div>
 
   <script>
-    const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=495267531&single=true&output=csv";
-    const teamData = {};
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?output=csv';
+    let teamData = [];
 
-    async function fetchTeamData() {
-      const res = await fetch(sheetURL);
-      const text = await res.text();
-      const lines = text.split("\n").slice(1);
-
-      lines.forEach(line => {
-        const columns = line.split(",");
-        const teamName = columns[0]?.trim();
-        const fontSize = columns[1]?.trim() || "48px";
-        const primaryColor = columns[2]?.trim();
-        const secondaryColor = columns[3]?.trim();
-
-        if (teamName && primaryColor && secondaryColor) {
-          teamData[teamName] = {
-            fontSize,
-            primary: primaryColor,
-            secondary: secondaryColor
+    fetch(SHEET_URL)
+      .then(res => res.text())
+      .then(csv => {
+        const rows = csv.split('\n');
+        const header = rows.shift();
+        teamData = rows.map(row => {
+          const cols = row.split(',');
+          return {
+            name: cols[0],
+            primary: cols[2],
+            secondary: cols[3],
+            fontSize: 48,
           };
-        }
+        }).filter(t => t.name);
+
+        const selectA = document.getElementById('selectTeamA');
+        const selectB = document.getElementById('selectTeamB');
+        teamData.forEach(team => {
+          const optionA = new Option(team.name, team.name);
+          const optionB = new Option(team.name, team.name);
+          selectA.appendChild(optionA);
+          selectB.appendChild(optionB);
+        });
       });
-
-      populateDropdowns();
-    }
-
-    function populateDropdowns() {
-      const teamASelect = document.getElementById("selectTeamA");
-      const teamBSelect = document.getElementById("selectTeamB");
-      teamASelect.innerHTML = "";
-      teamBSelect.innerHTML = "";
-
-      Object.keys(teamData).forEach(team => {
-        const optionA = document.createElement("option");
-        const optionB = document.createElement("option");
-        optionA.value = optionB.value = team;
-        optionA.textContent = optionB.textContent = team;
-        teamASelect.appendChild(optionA);
-        teamBSelect.appendChild(optionB);
-      });
-    }
 
     function updateOverlay() {
-      const teamAName = document.getElementById("selectTeamA").value;
-      const teamBName = document.getElementById("selectTeamB").value;
-      const scoreA = document.getElementById("scoreInputA").value;
-      const scoreB = document.getElementById("scoreInputB").value;
-      const fontSizeA = document.getElementById("fontSizeA").value + "px";
-      const fontSizeB = document.getElementById("fontSizeB").value + "px";
+      const teamAName = document.getElementById('selectTeamA').value;
+      const teamBName = document.getElementById('selectTeamB').value;
+      const scoreA = document.getElementById('scoreInputA').value;
+      const scoreB = document.getElementById('scoreInputB').value;
+      const fontSizeA = document.getElementById('fontSizeA').value + 'px';
+      const fontSizeB = document.getElementById('fontSizeB').value + 'px';
 
-      const teamA = teamData[teamAName];
-      const teamB = teamData[teamBName];
+      document.getElementById('teamA').textContent = teamAName;
+      document.getElementById('teamB').textContent = teamBName;
+      document.getElementById('scoreA').textContent = scoreA;
+      document.getElementById('scoreB').textContent = scoreB;
 
-      document.getElementById("teamA").textContent = teamAName;
-      document.getElementById("teamB").textContent = teamBName;
-      document.getElementById("scoreA").textContent = scoreA;
-      document.getElementById("scoreB").textContent = scoreB;
+      document.getElementById('teamA').style.fontSize = fontSizeA;
+      document.getElementById('teamB').style.fontSize = fontSizeB;
 
-      document.getElementById("teamA").style.color = "#ffffff";
-      document.getElementById("teamB").style.color = "#ffffff";
-      document.getElementById("teamA").style.fontSize = fontSizeA;
-      document.getElementById("teamB").style.fontSize = fontSizeB;
+      const teamA = teamData.find(t => t.name === teamAName);
+      const teamB = teamData.find(t => t.name === teamBName);
 
       if (teamA && teamB) {
-        document.getElementById("overlay").style.borderImage =
-          `linear-gradient(135deg, ${teamA.primary}, ${teamA.secondary}, ${teamB.primary}, ${teamB.secondary}) 1`;
+        const overlay = document.getElementById('overlay');
+        overlay.style.borderImage = `linear-gradient(to right, ${teamA.primary}, ${teamA.secondary}, ${teamB.primary}, ${teamB.secondary}) 1`;
       }
     }
-
-    fetchTeamData();
   </script>
 </body>
 </html>
