@@ -36,48 +36,6 @@
       z-index: 0;
     }
 
-    .team {
-      position: absolute;
-      font-weight: bold;
-      font-size: 36px;
-      color: white;
-      text-shadow: 2px 2px 4px #000;
-      z-index: 3;
-    }
-
-    .score {
-      position: absolute;
-      font-weight: bold;
-      font-size: 48px;
-      color: black;
-      text-shadow: 2px 2px 4px #000;
-      z-index: 3;
-      width: 120px;
-      text-align: center;
-    }
-
-    #teamA {
-      top: 35px;
-      left: 390px;
-    }
-
-    #scoreA {
-      top: 87px;
-      left: 595px;
-      transform: translateX(-50%);
-    }
-
-    #teamB {
-      top: 35px;
-      left: 1074px;
-    }
-
-    #scoreB {
-      top: 86px;
-      right: 595px;
-      transform: translateX(50%);
-    }
-
     .team-icon {
       width: 80px;
       height: 80px;
@@ -92,6 +50,49 @@
 
     #iconB {
       right: 330px;
+    }
+
+    #teamA {
+      position: absolute;
+      top: 35px;
+      left: 390px;
+      color: white;
+      font-weight: bold;
+      font-size: 36px;
+      z-index: 2;
+    }
+
+    #teamB {
+      position: absolute;
+      top: 35px;
+      left: 1074px;
+      color: white;
+      font-weight: bold;
+      font-size: 36px;
+      z-index: 2;
+    }
+
+    .score {
+      position: absolute;
+      font-weight: bold;
+      font-size: 48px;
+      color: black;
+      text-shadow: 2px 2px 4px #000;
+      z-index: 3;
+      width: 120px;
+      text-align: center;
+    }
+
+    #scoreA {
+      top: 87px;
+      left: 595px;
+      transform: translateX(-50%);
+    }
+
+    #scoreB {
+      top: 86px;
+      right: 595px;
+      transform: translateX(50%);
     }
 
     #controlPanel {
@@ -118,20 +119,16 @@
   <div id="overlay">
     <img id="background" src="overlay.png" alt="Overlay background" />
 
-    <!-- Team Logos -->
     <img id="iconA" class="team-icon" style="display: none;" alt="Team A Logo">
     <img id="iconB" class="team-icon" style="display: none;" alt="Team B Logo">
 
-    <!-- Team Names -->
-    <div id="teamA" class="team">Team A</div>
-    <div id="teamB" class="team">Team B</div>
+    <div id="teamA">Team A</div>
+    <div id="teamB">Team B</div>
 
-    <!-- Scores -->
     <div id="scoreA" class="score">0</div>
     <div id="scoreB" class="score">0</div>
   </div>
 
-  <!-- Control Panel -->
   <div id="controlPanel">
     <label>Font Size:
       <select id="fontSize">
@@ -172,11 +169,20 @@
     <button onclick="updateOverlay()">Update</button>
   </div>
 
-  <!-- Script -->
   <script>
+    const teamStyles = {
+      "Nocturn Ravens": {
+        fontSize: "36px",
+        color: "#ffffff",
+        primaryColor: "#000000",
+        secondaryColor: "#FFD700"
+      },
+      // Add more teams and styles as needed
+    };
+
     const teamLogos = {
       "Nocturn Ravens": "RVN.png"
-      // Add more here: "Team Name": "filename.png"
+      // Add more logos as needed
     };
 
     function updateOverlay() {
@@ -184,33 +190,45 @@
       const teamBName = document.getElementById("selectTeamB").value;
       const scoreA = document.getElementById("scoreInputA").value;
       const scoreB = document.getElementById("scoreInputB").value;
-      const fontSize = document.getElementById("fontSize").value + 'px';
 
       document.getElementById("teamA").textContent = teamAName;
       document.getElementById("teamB").textContent = teamBName;
       document.getElementById("scoreA").textContent = scoreA;
       document.getElementById("scoreB").textContent = scoreB;
 
-      document.getElementById("teamA").style.fontSize = fontSize;
-      document.getElementById("teamB").style.fontSize = fontSize;
+      if (teamStyles[teamAName]) {
+        document.getElementById("teamA").style.fontSize = teamStyles[teamAName].fontSize;
+        document.getElementById("teamA").style.color = teamStyles[teamAName].color;
+      }
 
-      // Show or hide logos based on mapped names
-      const iconA = document.getElementById("iconA");
-      const iconB = document.getElementById("iconB");
+      if (teamStyles[teamBName]) {
+        document.getElementById("teamB").style.fontSize = teamStyles[teamBName].fontSize;
+        document.getElementById("teamB").style.color = teamStyles[teamBName].color;
+      }
 
       if (teamLogos[teamAName]) {
+        const iconA = document.getElementById("iconA");
         iconA.src = teamLogos[teamAName];
         iconA.style.display = "block";
       } else {
-        iconA.style.display = "none";
+        document.getElementById("iconA").style.display = "none";
       }
 
       if (teamLogos[teamBName]) {
+        const iconB = document.getElementById("iconB");
         iconB.src = teamLogos[teamBName];
         iconB.style.display = "block";
       } else {
-        iconB.style.display = "none";
+        document.getElementById("iconB").style.display = "none";
       }
+
+      const gradientStart = teamStyles[teamAName]?.primaryColor || "#ff0000";
+      const gradientMid = teamStyles[teamAName]?.secondaryColor || "#000000";
+      const gradientEnd = teamStyles[teamBName]?.primaryColor || "#0000ff";
+      const gradientLast = teamStyles[teamBName]?.secondaryColor || "#ffffff";
+
+      document.getElementById("overlay").style.borderImage =
+        `linear-gradient(135deg, ${gradientStart}, ${gradientMid}, ${gradientEnd}, ${gradientLast}) 1`;
     }
   </script>
 </body>
