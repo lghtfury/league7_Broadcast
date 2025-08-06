@@ -22,6 +22,7 @@
       height: 1080px;
       box-sizing: border-box;
       border: 15px solid;
+      border-image: linear-gradient(135deg, #ff0000, #0000ff) 1;
       z-index: 1;
     }
 
@@ -38,18 +39,16 @@
     .team {
       position: absolute;
       font-weight: bold;
-      font-size: 48px;
+      font-size: 36px;
       color: white;
       text-shadow: 2px 2px 4px #000;
       z-index: 3;
-      transform: translateX(-50%);
-      white-space: nowrap;
     }
 
     .score {
       position: absolute;
       font-weight: bold;
-      font-size: 56px;
+      font-size: 48px;
       color: black;
       text-shadow: 2px 2px 4px #000;
       z-index: 3;
@@ -59,22 +58,40 @@
 
     #teamA {
       top: 35px;
-      left: 470px;
-    }
-    #teamB {
-      top: 35px;
-      left: 1440px;
-      transform: translateX(-50%);
+      left: 390px;
     }
 
     #scoreA {
-      top: 82px;
-      left: 555px;
+      top: 87px;
+      left: 595px;
+      transform: translateX(-50%);
+    }
+
+    #teamB {
+      top: 35px;
+      left: 1074px;
     }
 
     #scoreB {
-      top: 82px;
-      left: 1276px;
+      top: 86px;
+      right: 595px;
+      transform: translateX(50%);
+    }
+
+    .team-icon {
+      width: 80px;
+      height: 80px;
+      position: absolute;
+      top: 18px;
+      z-index: 2;
+    }
+
+    #iconA {
+      left: 280px;
+    }
+
+    #iconB {
+      right: 330px;
     }
 
     #controlPanel {
@@ -101,6 +118,10 @@
   <div id="overlay">
     <img id="background" src="overlay.png" alt="Overlay background" />
 
+    <!-- Team Logos -->
+    <img id="iconA" class="team-icon" style="display: none;" alt="Team A Logo">
+    <img id="iconB" class="team-icon" style="display: none;" alt="Team B Logo">
+
     <!-- Team Names -->
     <div id="teamA" class="team">Team A</div>
     <div id="teamB" class="team">Team B</div>
@@ -112,72 +133,83 @@
 
   <!-- Control Panel -->
   <div id="controlPanel">
+    <label>Font Size:
+      <select id="fontSize">
+        <option value="24">24</option>
+        <option value="32">32</option>
+        <option value="40">40</option>
+        <option value="48" selected>48</option>
+        <option value="56">56</option>
+      </select>
+    </label>
+    <br />
     <label>Team A:
-      <select id="selectTeamA"></select>
-      Score A: <input type="number" id="scoreInputA" value="0" />
-      Font Size A: <input type="number" id="fontSizeA" value="48" />
+      <select id="selectTeamA">
+        <option>Team A</option>
+        <option>Team B</option>
+        <option>Team C</option>
+        <option>Team D</option>
+        <option>Nocturn Ravens</option>
+      </select>
+    </label>
+    <label>Score A:
+      <input type="number" id="scoreInputA" value="0" />
     </label>
     <br />
     <label>Team B:
-      <select id="selectTeamB"></select>
-      Score B: <input type="number" id="scoreInputB" value="0" />
-      Font Size B: <input type="number" id="fontSizeB" value="48" />
+      <select id="selectTeamB">
+        <option>Team A</option>
+        <option>Team B</option>
+        <option>Team C</option>
+        <option>Team D</option>
+        <option>Nocturn Ravens</option>
+      </select>
+    </label>
+    <label>Score B:
+      <input type="number" id="scoreInputB" value="0" />
     </label>
     <br />
     <button onclick="updateOverlay()">Update</button>
   </div>
 
+  <!-- Script -->
   <script>
-    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?output=csv';
-    let teamData = [];
-
-    fetch(SHEET_URL)
-      .then(res => res.text())
-      .then(csv => {
-        const rows = csv.split('\n');
-        const header = rows.shift();
-        teamData = rows.map(row => {
-          const cols = row.split(',');
-          return {
-            name: cols[0],
-            primary: cols[2],
-            secondary: cols[3],
-            fontSize: 48,
-          };
-        }).filter(t => t.name);
-
-        const selectA = document.getElementById('selectTeamA');
-        const selectB = document.getElementById('selectTeamB');
-        teamData.forEach(team => {
-          const optionA = new Option(team.name, team.name);
-          const optionB = new Option(team.name, team.name);
-          selectA.appendChild(optionA);
-          selectB.appendChild(optionB);
-        });
-      });
+    const teamLogos = {
+      "Nocturn Ravens": "RVN.png"
+      // Add more here: "Team Name": "filename.png"
+    };
 
     function updateOverlay() {
-      const teamAName = document.getElementById('selectTeamA').value;
-      const teamBName = document.getElementById('selectTeamB').value;
-      const scoreA = document.getElementById('scoreInputA').value;
-      const scoreB = document.getElementById('scoreInputB').value;
-      const fontSizeA = document.getElementById('fontSizeA').value + 'px';
-      const fontSizeB = document.getElementById('fontSizeB').value + 'px';
+      const teamAName = document.getElementById("selectTeamA").value;
+      const teamBName = document.getElementById("selectTeamB").value;
+      const scoreA = document.getElementById("scoreInputA").value;
+      const scoreB = document.getElementById("scoreInputB").value;
+      const fontSize = document.getElementById("fontSize").value + 'px';
 
-      document.getElementById('teamA').textContent = teamAName;
-      document.getElementById('teamB').textContent = teamBName;
-      document.getElementById('scoreA').textContent = scoreA;
-      document.getElementById('scoreB').textContent = scoreB;
+      document.getElementById("teamA").textContent = teamAName;
+      document.getElementById("teamB").textContent = teamBName;
+      document.getElementById("scoreA").textContent = scoreA;
+      document.getElementById("scoreB").textContent = scoreB;
 
-      document.getElementById('teamA').style.fontSize = fontSizeA;
-      document.getElementById('teamB').style.fontSize = fontSizeB;
+      document.getElementById("teamA").style.fontSize = fontSize;
+      document.getElementById("teamB").style.fontSize = fontSize;
 
-      const teamA = teamData.find(t => t.name === teamAName);
-      const teamB = teamData.find(t => t.name === teamBName);
+      // Show or hide logos based on mapped names
+      const iconA = document.getElementById("iconA");
+      const iconB = document.getElementById("iconB");
 
-      if (teamA && teamB) {
-        const overlay = document.getElementById('overlay');
-        overlay.style.borderImage = `linear-gradient(to right, ${teamA.primary}, ${teamA.secondary}, ${teamB.primary}, ${teamB.secondary}) 1`;
+      if (teamLogos[teamAName]) {
+        iconA.src = teamLogos[teamAName];
+        iconA.style.display = "block";
+      } else {
+        iconA.style.display = "none";
+      }
+
+      if (teamLogos[teamBName]) {
+        iconB.src = teamLogos[teamBName];
+        iconB.style.display = "block";
+      } else {
+        iconB.style.display = "none";
       }
     }
   </script>
