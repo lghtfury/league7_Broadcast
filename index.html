@@ -40,6 +40,7 @@
       position: absolute;
       font-weight: bold;
       font-size: 48px;
+      color: white;
       text-shadow: 2px 2px 4px #000;
       z-index: 3;
     }
@@ -51,16 +52,17 @@
       color: black;
       text-shadow: 2px 2px 4px #000;
       z-index: 3;
-      width: 120px;
+      width: 90px;
       text-align: center;
     }
 
-    /* Updated positions based on your screenshots */
-    #teamA { top: 34.6px; left: 390.7px; }
-    #teamB { top: 34.6px; left: 1073.7px; }
+    /* Team Names */
+    #teamA { top: 35px; left: 390px; }
+    #teamB { top: 35px; left: 1074px; }
 
-    #scoreA { top: 87.6px; left: 555.2px; }
-    #scoreB { top: 86px; left: 1276.3px; }
+    /* Score Boxes - Fine-tuned for center alignment */
+    #scoreA { top: 92px; left: 555px; }
+    #scoreB { top: 92px; left: 1276px; }
 
     #controlPanel {
       position: absolute;
@@ -109,11 +111,6 @@
     </label>
     <label>Score B:
       <input type="number" id="scoreInputB" value="0" />
-    </label>
-    <br/>
-    <label>Border Gradient:
-      <input type="text" id="gradientA" value="#ff0000" size="7" /> →
-      <input type="text" id="gradientB" value="#0000ff" size="7" />
     </label>
     <br/>
     <button onclick="updateOverlay()">Update</button>
@@ -166,8 +163,6 @@
       const teamB = document.getElementById("selectTeamB").value;
       const scoreA = document.getElementById("scoreInputA").value;
       const scoreB = document.getElementById("scoreInputB").value;
-      const gradientStart = document.getElementById("gradientA").value;
-      const gradientEnd = document.getElementById("gradientB").value;
 
       const teamAStyles = teamData[teamA];
       const teamBStyles = teamData[teamB];
@@ -177,19 +172,20 @@
 
       document.getElementById("scoreA").textContent = scoreA;
       document.getElementById("scoreB").textContent = scoreB;
-      document.getElementById("overlay").style.borderImage = `linear-gradient(135deg, ${gradientStart}, ${gradientEnd}) 1`;
 
       teamAEl.textContent = teamA;
       teamBEl.textContent = teamB;
 
-      if (teamAStyles) {
-        teamAEl.style.color = teamAStyles.primary;
-        teamAEl.style.textShadow = `2px 2px 4px ${teamAStyles.secondary}`;
-      }
+      // Always white text
+      teamAEl.style.color = "#ffffff";
+      teamBEl.style.color = "#ffffff";
 
-      if (teamBStyles) {
-        teamBEl.style.color = teamBStyles.primary;
-        teamBEl.style.textShadow = `2px 2px 4px ${teamBStyles.secondary}`;
+      // Border gradient based on team colors
+      if (teamAStyles && teamBStyles) {
+        const borderStart = teamAStyles.primary || "#ff0000";
+        const borderEnd = teamBStyles.primary || "#0000ff";
+        document.getElementById("overlay").style.borderImage =
+          `linear-gradient(135deg, ${borderStart}, ${borderEnd}) 1`;
       }
     }
 
