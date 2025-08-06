@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Broadcast Control Panel</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      padding: 20px;
+    }
+
+    h1 {
+      color: #ffd700;
+    }
+
+    input, select, button {
+      padding: 8px;
+      margin: 5px;
+      font-size: 16px;
+    }
+
+    #matchInfo {
+      margin-top: 20px;
+      padding: 15px;
+      background: #222;
+      border: 1px solid #444;
+      border-radius: 10px;
+    }
+
+    .btn-group {
+      margin-top: 20px;
+    }
+
+    .btn-group button {
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 League 7 Broadcast Control Panel</h1>
+
+  <label for="matchIdInput">Enter Match ID:</label>
+  <input type="number" id="matchIdInput" placeholder="e.g., 3" />
+  <button onclick="loadMatchData()">Load Match</button>
+
+  <div id="matchInfo">
+    <h2>Match Preview</h2>
+    <p><strong>Division:</strong> <span id="division"></span></p>
+    <p><strong>Team A:</strong> <span id="teamA"></span></p>
+    <p><strong>Team B:</strong> <span id="teamB"></span></p>
+    <p><strong>Series Score:</strong> <span id="series"></span></p>
+  </div>
+
+  <div class="btn-group">
+    <button onclick="openOverlay('index.html')">🟩 Show In-Game Overlay</button>
+    <button onclick="openOverlay('matchup.html')">🔷 Show Matchup Overlay</button>
+    <button onclick="openOverlay('roster.html')">🟨 Show Roster Overlay</button>
+  </div>
+
+  <script>
+    const matchResultsURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=834810832&single=true&output=csv";
+
+    async function loadMatchData() {
+      const matchId = document.getElementById('matchIdInput').value.trim();
+      if (!matchId) return alert("Please enter a Match ID.");
+
+      const response = await fetch(matchResultsURL);
+      const text = await response.text();
+      const rows = text.trim().split("\n").map(row => row.split(","));
+
+      const headers = rows[0];
+      const matchIDIndex = headers.indexOf("MatchID");
+      const teamAIndex = headers.indexOf("A");
+      const teamBIndex = headers.indexOf("B");
+      const divisionIndex = headers.indexOf("Division");
+      const seriesAIndex = headers.findIndex(h => h === "A" && headers[headers.indexOf(h) + 1] === "B") + 12;
+      const seriesBIndex = seriesAIndex + 1;
+
+      const matchRow = rows.find(row => row[matchIDIndex] === matchId);
+      if (!matchRow) {
+        alert("Match ID not found.");
+        return;
+      }
+
+      const teamA = matchRow[teamAIndex];
+      const teamB = matchRow[teamBIndex];
+      const division = matchRow[divisionIndex];
+      const seriesScore = `${matchRow[seriesAIndex]} - ${matchRow[seriesBIndex]}`;
+
+      // Show preview
+      document.getElementById("teamA").textContent = teamA;
+      document.getElementById("teamB").textContent = teamB;
+      document.getElementById("division").textContent = division;
+      document.getElementById("series").textContent = seriesScore;
+
+      // Store in localStorage so overlays can read it
+      localStorage.setItem("matchData", JSON.stringify({
+        matchId,
+        teamA,
+        teamB,
+        division,
+        seriesScore
+      }));
+    }
+
+    function openOverlay(file) {
+      window.open(file, '_blank');
+    }
+  </script>
+</body>
+</html>
