@@ -49,29 +49,41 @@
       position: absolute;
       font-weight: bold;
       font-size: 56px;
-      color: gold;
+      color: black;
       text-shadow: 2px 2px 4px #000;
       z-index: 3;
-      width: 120px;
+      width: 90px;
       text-align: center;
     }
 
-    #teamA { top: 20px; left: 400px; }
-    #scoreA { top: 100px; left: 435px; }
+    /* Team Names */
+    #teamA { top: 35px; left: 390px; }
+    #teamB { top: 35px; left: 1074px; }
 
-    #teamB { top: 20px; right: 400px; }
-    #scoreB { top: 100px; right: 435px; }
+    /* Score Boxes */
+    #scoreA { top: 88px; left: 555px; }
+    #scoreB { top: 86px; left: 1276px; }
 
-    .team-icon {
-      width: 80px;
-      height: 80px;
+    /* Logos */
+    #iconA {
+      width: 168px;
+      height: 158px;
       position: absolute;
-      top: 18px;
+      top: 0px;
+      left: 108px;
       z-index: 2;
+      display: none;
     }
 
-    #iconA { left: 280px; }
-    #iconB { right: 330px; }
+    #iconB {
+      width: 161px;
+      height: 158px;
+      position: absolute;
+      top: 0px;
+      right: 108px;
+      z-index: 2;
+      display: none;
+    }
 
     #controlPanel {
       position: absolute;
@@ -98,8 +110,8 @@
     <img id="background" src="overlay.png" alt="Overlay background" />
 
     <!-- Team Logos -->
-    <img id="iconA" class="team-icon" style="display: none;" alt="Team A Logo">
-    <img id="iconB" class="team-icon" style="display: none;" alt="Team B Logo">
+    <img id="iconA" class="team-icon" alt="Team A Logo">
+    <img id="iconB" class="team-icon" alt="Team B Logo">
 
     <!-- Team Names -->
     <div id="teamA" class="team">Team A</div>
@@ -112,16 +124,6 @@
 
   <!-- Control Panel -->
   <div id="controlPanel">
-    <label>Font Size:
-      <select id="fontSize">
-        <option value="24">24</option>
-        <option value="32">32</option>
-        <option value="40">40</option>
-        <option value="48" selected>48</option>
-        <option value="56">56</option>
-      </select>
-    </label>
-    <br />
     <label>Team A:
       <select id="selectTeamA">
         <option>Team A</option>
@@ -158,17 +160,40 @@
 
   <!-- Script -->
   <script>
-    const teamLogos = {
-      "Nocturn Ravens": "RVN.png"
-      // Add more: "Team Name": "FileName.png"
-    };
+    let teamStyles = {};
+
+    async function loadTeamStyles() {
+      const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=495267531&single=true&output=csv";
+      const response = await fetch(url);
+      const csv = await response.text();
+
+      const lines = csv.trim().split("\n");
+      const headers = lines[0].split(",");
+
+      const nameIndex = headers.indexOf("Team Name");
+      const colorIndex = headers.indexOf("PrimaryColor");
+
+      for (let i = 1; i < lines.length; i++) {
+        const row = lines[i].split(",");
+        const teamName = row[0].trim();
+        const fontColor = row[2].trim(); // PrimaryColor
+
+        if (teamName && fontColor) {
+          teamStyles[teamName] = {
+            fontSize: "48px",
+            color: fontColor
+          };
+        }
+      }
+
+      updateOverlay(); // Run once after styles load
+    }
 
     function updateOverlay() {
       const teamAName = document.getElementById("selectTeamA").value;
       const teamBName = document.getElementById("selectTeamB").value;
       const scoreA = document.getElementById("scoreInputA").value;
       const scoreB = document.getElementById("scoreInputB").value;
-      const fontSize = document.getElementById("fontSize").value + 'px';
       const gradientStart = document.getElementById("gradientA").value;
       const gradientEnd = document.getElementById("gradientB").value;
 
@@ -177,13 +202,27 @@
       document.getElementById("scoreA").textContent = scoreA;
       document.getElementById("scoreB").textContent = scoreB;
 
-      document.getElementById("teamA").style.fontSize = fontSize;
-      document.getElementById("teamB").style.fontSize = fontSize;
+      // Apply styles from teamStyles
+      const styleA = teamStyles[teamAName];
+      const styleB = teamStyles[teamBName];
+
+      if (styleA) {
+        document.getElementById("teamA").style.color = styleA.color;
+        document.getElementById("teamA").style.fontSize = styleA.fontSize;
+      }
+
+      if (styleB) {
+        document.getElementById("teamB").style.color = styleB.color;
+        document.getElementById("teamB").style.fontSize = styleB.fontSize;
+      }
 
       document.getElementById("overlay").style.borderImage =
         `linear-gradient(135deg, ${gradientStart}, ${gradientEnd}) 1`;
 
-      // Show or hide logos based on mapped names
+      const teamLogos = {
+        "Nocturn Ravens": "RVN.png"
+      };
+
       const iconA = document.getElementById("iconA");
       const iconB = document.getElementById("iconB");
 
@@ -201,6 +240,8 @@
         iconB.style.display = "none";
       }
     }
+
+    window.onload = loadTeamStyles;
   </script>
 </body>
 </html>
