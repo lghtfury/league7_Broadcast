@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>League 7 Overlay</title>
+  <title>League 7 In-Game Overlay</title>
   <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
   <style>
     html, body {
@@ -90,32 +90,13 @@
 
     #iconA { left: 280px; }
     #iconB { right: 330px; }
-
-    #controlPanel {
-      position: absolute;
-      bottom: 40px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.7);
-      padding: 15px;
-      border-radius: 10px;
-      color: white;
-      font-size: 16px;
-      z-index: 9999;
-    }
-
-    select, input {
-      font-family: 'IM Fell English SC', serif;
-      font-size: 16px;
-      margin: 5px;
-    }
   </style>
 </head>
 <body>
   <div id="overlay">
     <img id="background" src="overlay.png" alt="Overlay background" />
 
-    <!-- Team Logos -->
+    <!-- Team Logos (hidden for now) -->
     <img id="iconA" class="team-icon" style="display: none;" alt="Team A Logo">
     <img id="iconB" class="team-icon" style="display: none;" alt="Team B Logo">
 
@@ -123,90 +104,46 @@
     <div id="teamA">Team A</div>
     <div id="teamB">Team B</div>
 
-    <!-- Scores -->
+    <!-- Scores (static for now) -->
     <div id="scoreA">0</div>
     <div id="scoreB">0</div>
   </div>
 
-  <div id="controlPanel">
-    <label>Font Size:
-      <select id="fontSize">
-        <option value="24">24</option>
-        <option value="32">32</option>
-        <option value="40">40</option>
-        <option value="48" selected>48</option>
-        <option value="56">56</option>
-      </select>
-    </label>
-    <br />
-    <button onclick="updateOverlay()">Update</button>
-  </div>
-
   <script>
-    let teamData = [];
+    function adjustFontSize(id) {
+      const el = document.getElementById(id);
+      const length = el.textContent.length;
 
-    async function fetchCSV() {
-      const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?output=csv';
-      const response = await fetch(url);
-      const text = await response.text();
-      const lines = text.trim().split('\n');
-      const headers = lines[0].split(',');
-
-      teamData = lines.slice(1).map(line => {
-        const values = line.split(',');
-        return headers.reduce((obj, key, index) => {
-          obj[key] = values[index];
-          return obj;
-        }, {});
-      });
-
-      populateDropdowns();
+      if (length > 16) {
+        el.style.fontSize = "26px";
+      } else if (length > 12) {
+        el.style.fontSize = "30px";
+      } else {
+        el.style.fontSize = "36px";
+      }
     }
 
-    function populateDropdowns() {
-      const teamASelect = document.createElement('select');
-      const teamBSelect = document.createElement('select');
+    function applyMatchData() {
+      const data = JSON.parse(localStorage.getItem("matchData"));
+      if (!data) return;
 
-      teamASelect.id = 'selectTeamA';
-      teamBSelect.id = 'selectTeamB';
+      const { teamA, teamB } = data;
 
-      teamData.forEach(team => {
-        const optionA = document.createElement('option');
-        const optionB = document.createElement('option');
-        optionA.value = optionA.textContent = team.TeamName;
-        optionB.value = optionB.textContent = team.TeamName;
-        teamASelect.appendChild(optionA);
-        teamBSelect.appendChild(optionB);
-      });
+      const teamAEl = document.getElementById("teamA");
+      const teamBEl = document.getElementById("teamB");
 
-      const cp = document.getElementById('controlPanel');
-      cp.insertBefore(teamASelect, cp.children[2]);
-      cp.insertBefore(teamBSelect, cp.children[6]);
+      teamAEl.textContent = teamA;
+      teamBEl.textContent = teamB;
+
+      adjustFontSize("teamA");
+      adjustFontSize("teamB");
+
+      // Optional: Add gradient if colors are known later
+      // const overlay = document.getElementById("overlay");
+      // overlay.style.borderImage = `linear-gradient(135deg, ${data.colorA}, ${data.colorB}) 1`;
     }
 
-    function updateOverlay() {
-      const teamAName = document.getElementById("selectTeamA").value;
-      const teamBName = document.getElementById("selectTeamB").value;
-      const fontSize = document.getElementById("fontSize").value + 'px';
-
-      const teamAData = teamData.find(t => t.TeamName === teamAName);
-      const teamBData = teamData.find(t => t.TeamName === teamBName);
-
-      document.getElementById("teamA").textContent = teamAName;
-      document.getElementById("teamB").textContent = teamBName;
-      document.getElementById("teamA").style.fontSize = fontSize;
-      document.getElementById("teamB").style.fontSize = fontSize;
-
-      // Font colors from CSV (optional override)
-      document.getElementById("teamA").style.color = teamAData?.FontColor || 'white';
-      document.getElementById("teamB").style.color = teamBData?.FontColor || 'white';
-
-      // Border gradient
-      const gradient = `linear-gradient(135deg, ${teamAData?.PrimaryColor}, ${teamAData?.SecondaryColor}, ${teamBData?.PrimaryColor}, ${teamBData?.SecondaryColor}) 1`;
-      document.getElementById("overlay").style.borderImage = gradient;
-    }
-
-    fetchCSV();
+    window.onload = applyMatchData;
   </script>
 </body>
 </html>
