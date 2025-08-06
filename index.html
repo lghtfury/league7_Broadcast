@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>League 7 Overlay</title>
   <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
   <style>
@@ -40,7 +40,6 @@
       position: absolute;
       font-weight: bold;
       font-size: 48px;
-      color: white;
       text-shadow: 2px 2px 4px #000;
       z-index: 3;
     }
@@ -52,38 +51,16 @@
       color: black;
       text-shadow: 2px 2px 4px #000;
       z-index: 3;
-      width: 90px;
+      width: 120px;
       text-align: center;
     }
 
-    /* Team Names */
-    #teamA { top: 35px; left: 390px; }
-    #teamB { top: 35px; left: 1074px; }
+    /* Updated positions based on your screenshots */
+    #teamA { top: 34.6px; left: 390.7px; }
+    #teamB { top: 34.6px; left: 1073.7px; }
 
-    /* Score Boxes */
-    #scoreA { top: 88px; left: 555px; }
-    #scoreB { top: 86px; left: 1276px; }
-
-    /* Logos */
-    #iconA {
-      width: 168px;
-      height: 158px;
-      position: absolute;
-      top: 0px;
-      left: 108px;
-      z-index: 2;
-      display: none;
-    }
-
-    #iconB {
-      width: 161px;
-      height: 158px;
-      position: absolute;
-      top: 0px;
-      right: 108px;
-      z-index: 2;
-      display: none;
-    }
+    #scoreA { top: 87.6px; left: 555.2px; }
+    #scoreB { top: 86px; left: 1276.3px; }
 
     #controlPanel {
       position: absolute;
@@ -109,10 +86,6 @@
   <div id="overlay">
     <img id="background" src="overlay.png" alt="Overlay background" />
 
-    <!-- Team Logos -->
-    <img id="iconA" class="team-icon" alt="Team A Logo">
-    <img id="iconB" class="team-icon" alt="Team B Logo">
-
     <!-- Team Names -->
     <div id="teamA" class="team">Team A</div>
     <div id="teamB" class="team">Team B</div>
@@ -125,123 +98,102 @@
   <!-- Control Panel -->
   <div id="controlPanel">
     <label>Team A:
-      <select id="selectTeamA">
-        <option>Team A</option>
-        <option>Team B</option>
-        <option>Team C</option>
-        <option>Team D</option>
-        <option>Nocturn Ravens</option>
-      </select>
+      <select id="selectTeamA"></select>
     </label>
     <label>Score A:
       <input type="number" id="scoreInputA" value="0" />
     </label>
-    <br />
+    <br/>
     <label>Team B:
-      <select id="selectTeamB">
-        <option>Team A</option>
-        <option>Team B</option>
-        <option>Team C</option>
-        <option>Team D</option>
-        <option>Nocturn Ravens</option>
-      </select>
+      <select id="selectTeamB"></select>
     </label>
     <label>Score B:
       <input type="number" id="scoreInputB" value="0" />
     </label>
-    <br />
+    <br/>
     <label>Border Gradient:
       <input type="text" id="gradientA" value="#ff0000" size="7" /> →
       <input type="text" id="gradientB" value="#0000ff" size="7" />
     </label>
-    <br />
+    <br/>
     <button onclick="updateOverlay()">Update</button>
   </div>
 
-  <!-- Script -->
   <script>
-    let teamStyles = {};
+    const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=495267531&single=true&output=csv";
+    const teamData = {};
 
-    async function loadTeamStyles() {
-      const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=495267531&single=true&output=csv";
-      const response = await fetch(url);
-      const csv = await response.text();
+    async function fetchTeamData() {
+      const res = await fetch(sheetURL);
+      const text = await res.text();
+      const lines = text.split("\n").slice(1); // skip header
 
-      const lines = csv.trim().split("\n");
-      const headers = lines[0].split(",");
+      lines.forEach(line => {
+        const columns = line.split(",");
+        const teamName = columns[0]?.trim();
+        const primaryColor = columns[2]?.trim();
+        const secondaryColor = columns[3]?.trim();
 
-      const nameIndex = headers.indexOf("Team Name");
-      const colorIndex = headers.indexOf("PrimaryColor");
-
-      for (let i = 1; i < lines.length; i++) {
-        const row = lines[i].split(",");
-        const teamName = row[0].trim();
-        const fontColor = row[2].trim(); // PrimaryColor
-
-        if (teamName && fontColor) {
-          teamStyles[teamName] = {
-            fontSize: "48px",
-            color: fontColor
+        if (teamName && primaryColor && secondaryColor) {
+          teamData[teamName] = {
+            primary: primaryColor,
+            secondary: secondaryColor
           };
         }
-      }
+      });
 
-      updateOverlay(); // Run once after styles load
+      populateDropdowns();
+    }
+
+    function populateDropdowns() {
+      const teamASelect = document.getElementById("selectTeamA");
+      const teamBSelect = document.getElementById("selectTeamB");
+      teamASelect.innerHTML = "";
+      teamBSelect.innerHTML = "";
+
+      Object.keys(teamData).forEach(team => {
+        const optionA = document.createElement("option");
+        const optionB = document.createElement("option");
+        optionA.value = optionB.value = team;
+        optionA.textContent = optionB.textContent = team;
+        teamASelect.appendChild(optionA);
+        teamBSelect.appendChild(optionB);
+      });
     }
 
     function updateOverlay() {
-      const teamAName = document.getElementById("selectTeamA").value;
-      const teamBName = document.getElementById("selectTeamB").value;
+      const teamA = document.getElementById("selectTeamA").value;
+      const teamB = document.getElementById("selectTeamB").value;
       const scoreA = document.getElementById("scoreInputA").value;
       const scoreB = document.getElementById("scoreInputB").value;
       const gradientStart = document.getElementById("gradientA").value;
       const gradientEnd = document.getElementById("gradientB").value;
 
-      document.getElementById("teamA").textContent = teamAName;
-      document.getElementById("teamB").textContent = teamBName;
+      const teamAStyles = teamData[teamA];
+      const teamBStyles = teamData[teamB];
+
+      const teamAEl = document.getElementById("teamA");
+      const teamBEl = document.getElementById("teamB");
+
       document.getElementById("scoreA").textContent = scoreA;
       document.getElementById("scoreB").textContent = scoreB;
+      document.getElementById("overlay").style.borderImage = `linear-gradient(135deg, ${gradientStart}, ${gradientEnd}) 1`;
 
-      // Apply styles from teamStyles
-      const styleA = teamStyles[teamAName];
-      const styleB = teamStyles[teamBName];
+      teamAEl.textContent = teamA;
+      teamBEl.textContent = teamB;
 
-      if (styleA) {
-        document.getElementById("teamA").style.color = styleA.color;
-        document.getElementById("teamA").style.fontSize = styleA.fontSize;
+      if (teamAStyles) {
+        teamAEl.style.color = teamAStyles.primary;
+        teamAEl.style.textShadow = `2px 2px 4px ${teamAStyles.secondary}`;
       }
 
-      if (styleB) {
-        document.getElementById("teamB").style.color = styleB.color;
-        document.getElementById("teamB").style.fontSize = styleB.fontSize;
-      }
-
-      document.getElementById("overlay").style.borderImage =
-        `linear-gradient(135deg, ${gradientStart}, ${gradientEnd}) 1`;
-
-      const teamLogos = {
-        "Nocturn Ravens": "RVN.png"
-      };
-
-      const iconA = document.getElementById("iconA");
-      const iconB = document.getElementById("iconB");
-
-      if (teamLogos[teamAName]) {
-        iconA.src = teamLogos[teamAName];
-        iconA.style.display = "block";
-      } else {
-        iconA.style.display = "none";
-      }
-
-      if (teamLogos[teamBName]) {
-        iconB.src = teamLogos[teamBName];
-        iconB.style.display = "block";
-      } else {
-        iconB.style.display = "none";
+      if (teamBStyles) {
+        teamBEl.style.color = teamBStyles.primary;
+        teamBEl.style.textShadow = `2px 2px 4px ${teamBStyles.secondary}`;
       }
     }
 
-    window.onload = loadTeamStyles;
+    fetchTeamData();
   </script>
 </body>
 </html>
