@@ -22,7 +22,7 @@
       height: 1080px;
       box-sizing: border-box;
       border: 15px solid;
-      border-image: linear-gradient(135deg, #ff0000, #0000ff) 1;
+      border-image: linear-gradient(135deg, #000000, #ff0000, #0000ff, #ffffff) 1;
       z-index: 1;
     }
 
@@ -39,7 +39,6 @@
     .team {
       position: absolute;
       font-weight: bold;
-      font-size: 48px;
       color: white;
       text-shadow: 2px 2px 4px #000;
       z-index: 3;
@@ -56,11 +55,9 @@
       text-align: center;
     }
 
-    /* Team Names */
     #teamA { top: 35px; left: 390px; }
     #teamB { top: 35px; left: 1074px; }
 
-    /* Score Boxes - Fine-tuned for center alignment */
     #scoreA { top: 92px; left: 555px; }
     #scoreB { top: 92px; left: 1276px; }
 
@@ -88,16 +85,13 @@
   <div id="overlay">
     <img id="background" src="overlay.png" alt="Overlay background" />
 
-    <!-- Team Names -->
     <div id="teamA" class="team">Team A</div>
     <div id="teamB" class="team">Team B</div>
 
-    <!-- Scores -->
     <div id="scoreA" class="score">0</div>
     <div id="scoreB" class="score">0</div>
   </div>
 
-  <!-- Control Panel -->
   <div id="controlPanel">
     <label>Team A:
       <select id="selectTeamA"></select>
@@ -105,12 +99,18 @@
     <label>Score A:
       <input type="number" id="scoreInputA" value="0" />
     </label>
+    <label>Font Size A:
+      <input type="number" id="fontSizeA" value="48" />
+    </label>
     <br/>
     <label>Team B:
       <select id="selectTeamB"></select>
     </label>
     <label>Score B:
       <input type="number" id="scoreInputB" value="0" />
+    </label>
+    <label>Font Size B:
+      <input type="number" id="fontSizeB" value="48" />
     </label>
     <br/>
     <button onclick="updateOverlay()">Update</button>
@@ -123,16 +123,18 @@
     async function fetchTeamData() {
       const res = await fetch(sheetURL);
       const text = await res.text();
-      const lines = text.split("\n").slice(1); // skip header
+      const lines = text.split("\n").slice(1);
 
       lines.forEach(line => {
         const columns = line.split(",");
         const teamName = columns[0]?.trim();
+        const fontSize = columns[1]?.trim() || "48px";
         const primaryColor = columns[2]?.trim();
         const secondaryColor = columns[3]?.trim();
 
         if (teamName && primaryColor && secondaryColor) {
           teamData[teamName] = {
+            fontSize,
             primary: primaryColor,
             secondary: secondaryColor
           };
@@ -159,33 +161,29 @@
     }
 
     function updateOverlay() {
-      const teamA = document.getElementById("selectTeamA").value;
-      const teamB = document.getElementById("selectTeamB").value;
+      const teamAName = document.getElementById("selectTeamA").value;
+      const teamBName = document.getElementById("selectTeamB").value;
       const scoreA = document.getElementById("scoreInputA").value;
       const scoreB = document.getElementById("scoreInputB").value;
+      const fontSizeA = document.getElementById("fontSizeA").value + "px";
+      const fontSizeB = document.getElementById("fontSizeB").value + "px";
 
-      const teamAStyles = teamData[teamA];
-      const teamBStyles = teamData[teamB];
+      const teamA = teamData[teamAName];
+      const teamB = teamData[teamBName];
 
-      const teamAEl = document.getElementById("teamA");
-      const teamBEl = document.getElementById("teamB");
-
+      document.getElementById("teamA").textContent = teamAName;
+      document.getElementById("teamB").textContent = teamBName;
       document.getElementById("scoreA").textContent = scoreA;
       document.getElementById("scoreB").textContent = scoreB;
 
-      teamAEl.textContent = teamA;
-      teamBEl.textContent = teamB;
+      document.getElementById("teamA").style.color = "#ffffff";
+      document.getElementById("teamB").style.color = "#ffffff";
+      document.getElementById("teamA").style.fontSize = fontSizeA;
+      document.getElementById("teamB").style.fontSize = fontSizeB;
 
-      // Always white text
-      teamAEl.style.color = "#ffffff";
-      teamBEl.style.color = "#ffffff";
-
-      // Border gradient based on team colors
-      if (teamAStyles && teamBStyles) {
-        const borderStart = teamAStyles.primary || "#ff0000";
-        const borderEnd = teamBStyles.primary || "#0000ff";
+      if (teamA && teamB) {
         document.getElementById("overlay").style.borderImage =
-          `linear-gradient(135deg, ${borderStart}, ${borderEnd}) 1`;
+          `linear-gradient(135deg, ${teamA.primary}, ${teamA.secondary}, ${teamB.primary}, ${teamB.secondary}) 1`;
       }
     }
 
