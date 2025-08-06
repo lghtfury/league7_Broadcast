@@ -36,6 +36,12 @@
     .btn-group button {
       margin-right: 10px;
     }
+
+    .debug {
+      font-size: 12px;
+      color: #ccc;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -47,10 +53,10 @@
 
   <div id="matchInfo">
     <h2>Match Preview</h2>
-    <p><strong>Division:</strong> <span id="division"></span></p>
-    <p><strong>Team A:</strong> <span id="teamA"></span></p>
-    <p><strong>Team B:</strong> <span id="teamB"></span></p>
-    <p><strong>Series Score:</strong> <span id="series"></span></p>
+    <p><strong>Division:</strong> <span id="division">-</span></p>
+    <p><strong>Team A:</strong> <span id="teamA">-</span></p>
+    <p><strong>Team B:</strong> <span id="teamB">-</span></p>
+    <p><strong>Series Score:</strong> <span id="series">-</span></p>
   </div>
 
   <div class="btn-group">
@@ -58,6 +64,8 @@
     <button onclick="openOverlay('matchup.html')">🔷 Show Matchup Overlay</button>
     <button onclick="openOverlay('roster.html')">🟨 Show Roster Overlay</button>
   </div>
+
+  <div class="debug" id="debug"></div>
 
   <script>
     const matchResultsURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=834810832&single=true&output=csv";
@@ -70,17 +78,21 @@
       const text = await response.text();
       const rows = text.trim().split("\n").map(row => row.split(","));
 
-      const headers = rows[0];
-      const matchIDIndex = headers.indexOf("MatchID");
-      const teamAIndex = headers.indexOf("A");
-      const teamBIndex = headers.indexOf("B");
-      const divisionIndex = headers.indexOf("Division");
-      const seriesAIndex = headers.findIndex(h => h === "A" && headers[headers.indexOf(h) + 1] === "B") + 12;
-      const seriesBIndex = seriesAIndex + 1;
+      // Row 2 is actual headers
+      const headers = rows[1];
+      const dataRows = rows.slice(2); // Start at row 3
 
-      const matchRow = rows.find(row => row[matchIDIndex] === matchId);
+      const matchIDIndex = 3; // Column D
+      const divisionIndex = 2; // Column C
+      const teamAIndex = 4;    // Column E
+      const teamBIndex = 5;    // Column F
+      const seriesAIndex = headers.length - 2;
+      const seriesBIndex = headers.length - 1;
+
+      const matchRow = dataRows.find(row => row[matchIDIndex] === matchId);
       if (!matchRow) {
         alert("Match ID not found.");
+        document.getElementById("debug").textContent = `[DEBUG] Match ID ${matchId} not found.`;
         return;
       }
 
@@ -95,7 +107,7 @@
       document.getElementById("division").textContent = division;
       document.getElementById("series").textContent = seriesScore;
 
-      // Store in localStorage so overlays can read it
+      // Store for overlays to access
       localStorage.setItem("matchData", JSON.stringify({
         matchId,
         teamA,
@@ -103,6 +115,8 @@
         division,
         seriesScore
       }));
+
+      document.getElementById("debug").textContent = `[DEBUG] Loaded: Match ID ${matchId}, ${teamA} vs ${teamB}, Series ${seriesScore}`;
     }
 
     function openOverlay(file) {
