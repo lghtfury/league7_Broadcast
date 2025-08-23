@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>League 7 In‑Game Overlay</title>
+  <title>League 7 In-Game Overlay</title>
   <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
   <style>
-    /* TRANSPARENT for Browser Source */
+    /* Keep transparency */
     html, body {
       margin: 0;
       padding: 0;
@@ -20,30 +20,40 @@
       width: 1920px;
       height: 1080px;
       box-sizing: border-box;
-      /* Border gradient will be set from JS using team colors */
-      border: 15px solid;
+      border: 15px solid; /* gradient set by JS from team colors */
       border-image: linear-gradient(135deg, #444, #222) 1;
       background: transparent !important;
     }
 
-    /* Optional split color wash under the text for team halves */
+    /* Background image */
+    #background {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Optional color wash */
     #colorWash {
       position: absolute;
       inset: 0;
       pointer-events: none;
-      z-index: 0;        /* under text */
-      opacity: 0.18;     /* tweak intensity or set to 0 to disable */
+      z-index: 1; 
+      opacity: 0.18; 
       background: transparent;
     }
 
-    /* Team labels */
+    /* Team names */
     #teamA, #teamB {
       position: absolute;
       top: 35px;
       color: white;
       font-weight: bold;
       font-size: 36px;
-      z-index: 2;
+      z-index: 3;
       white-space: nowrap;
       max-width: 540px;
       overflow: hidden;
@@ -52,7 +62,7 @@
     #teamA { left: 390px; }
     #teamB { left: 1074px; }
 
-    /* Scores (live) */
+    /* Scores */
     #scoreA, #scoreB {
       position: absolute;
       color: black;
@@ -67,29 +77,20 @@
 </head>
 <body>
   <div id="overlay">
-    <!-- Optional subtle color tint for left/right halves -->
+    <!-- Background frame -->
+    <img id="background" src="overlay.png" alt="Overlay background" />
+
+    <!-- Optional tint -->
     <div id="colorWash" aria-hidden="true"></div>
 
-    <!-- Team Names -->
+    <!-- Team names and scores -->
     <div id="teamA">Team A</div>
     <div id="teamB">Team B</div>
-
-    <!-- Live Scores (from panel) -->
     <div id="scoreA">0</div>
     <div id="scoreB">0</div>
   </div>
 
   <script>
-    /***********************
-     * CONFIG (optional)
-     ***********************/
-    // If you later switch to cloud sync (e.g., JSONBin), set JSONBIN_LATEST and flip USE_JSONBIN to true.
-    const USE_JSONBIN = false;  // keep false for localStorage (panel + overlay in same browser profile)
-    const JSONBIN_LATEST = "https://api.jsonbin.io/v3/b/YOUR_BIN_ID/latest"; // only if you enable cloud sync
-
-    /***********************
-     * Utilities
-     ***********************/
     function safeColor(hex, fallback = "#222") {
       const v = String(hex || "").trim();
       return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : fallback;
@@ -102,94 +103,42 @@
     function setBorderGradient(aHex, bHex) {
       const a = safeColor(aHex, "#444");
       const b = safeColor(bHex, "#222");
-      document.getElementById("overlay").style.borderImage = `linear-gradient(135deg, ${a}, ${b}) 1`;
-      // Optional split background wash:
-      const wash = document.getElementById("colorWash");
-      if (wash) {
-        wash.style.background = `linear-gradient(to right, ${a} 0%, ${a} 50%, ${b} 50%, ${b} 100%)`;
-      }
+      document.getElementById("overlay").style.borderImage =
+        `linear-gradient(135deg, ${a}, ${b}) 1`;
+      document.getElementById("colorWash").style.background =
+        `linear-gradient(to right, ${a} 0%, ${a} 50%, ${b} 50%, ${b} 100%)`;
     }
 
-    /***********************
-     * Apply payload to UI
-     ***********************/
     function applyPayload(data) {
       if (!data) return;
-
-      // Team Names (prefer full names if provided by panel)
-      const teamAName = data.teamAName || data.teamA || "Team A";
-      const teamBName = data.teamBName || data.teamB || "Team B";
-      document.getElementById("teamA").textContent = teamAName;
-      document.getElementById("teamB").textContent = teamBName;
+      document.getElementById("teamA").textContent = data.teamAName || data.teamA || "Team A";
+      document.getElementById("teamB").textContent = data.teamBName || data.teamB || "Team B";
       adjustFontSize("teamA");
       adjustFontSize("teamB");
 
-      // Live Map Scores
       document.getElementById("scoreA").textContent = data.mapScoreA ?? 0;
       document.getElementById("scoreB").textContent = data.mapScoreB ?? 0;
 
-      // Colors from Teams sheet (pushed by panel)
-      const aPrimary = data?.teamAColors?.primary;
-      const bPrimary = data?.teamBColors?.primary;
-      setBorderGradient(aPrimary, bPrimary);
+      setBorderGradient(data?.teamAColors?.primary, data?.teamBColors?.primary);
     }
 
-    /***********************
-     * LOCAL mode (default)
-     * - Listens for panel "Push" via localStorage (same browser profile).
-     ***********************/
-    function initLocalMode() {
-      // Initial render (panel may have already pushed)
+    // Initial load
+    (function init() {
       try {
-        const initial = JSON.parse(localStorage.getItem("matchData_ingame") || localStorage.getItem("matchData") || "{}");
-        if (initial && Object.keys(initial).length) applyPayload(initial);
+        const initial = JSON.parse(
+          localStorage.getItem("matchData_ingame") ||
+          localStorage.getItem("matchData") || "{}"
+        );
+        if (Object.keys(initial).length) applyPayload(initial);
       } catch (_) {}
+    })();
 
-      // Live updates on push
-      window.addEventListener("storage", (e) => {
-        if (e.key === "matchData_ingame" || e.key === "matchData") {
-          try {
-            const data = JSON.parse(e.newValue || "{}");
-            applyPayload(data);
-          } catch (_) {}
-        }
-      });
-    }
-
-    /***********************
-     * JSONBIN mode (optional)
-     * - Polls a public JSON endpoint if panel and overlay can't share localStorage.
-     * - Keep Browser Source transparency.
-     ***********************/
-    let lastVersion = null;
-    async function tickJSON() {
-      try {
-        const res = await fetch(JSONBIN_LATEST, { cache: "no-store" });
-        if (!res.ok) throw new Error("Cloud fetch failed: " + res.status);
-        const wrapper = await res.json();       // JSONBin returns { record: { ... }, metadata: {...} }
-        const data = wrapper?.record || wrapper;
-        if (!data) return;
-        if (data.version !== lastVersion) {
-          lastVersion = data.version;
-          applyPayload(data);
-        }
-      } catch (e) {
-        console.error("[Overlay] JSON poll error:", e);
+    // Listen for panel pushes
+    window.addEventListener("storage", (e) => {
+      if (e.key === "matchData_ingame" || e.key === "matchData") {
+        try { applyPayload(JSON.parse(e.newValue || "{}")); } catch (_) {}
       }
-    }
-    function initJSONMode() {
-      tickJSON();
-      setInterval(tickJSON, 3000); // poll every 3s (change to 5s if you want)
-    }
-
-    /***********************
-     * Boot
-     ***********************/
-    if (USE_JSONBIN) {
-      initJSONMode();
-    } else {
-      initLocalMode();
-    }
+    });
   </script>
 </body>
 </html>
