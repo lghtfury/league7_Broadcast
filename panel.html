@@ -4,58 +4,45 @@
   <meta charset="UTF-8">
   <title>Broadcast Control Panel</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: #fff;
-      padding: 20px;
-    }
-
-    h1 {
-      color: #ffd700;
-    }
-
-    input, select, button {
-      padding: 8px;
-      margin: 5px;
-      font-size: 16px;
-    }
-
-    #matchInfo {
-      margin-top: 20px;
-      padding: 15px;
-      background: #222;
-      border: 1px solid #444;
-      border-radius: 10px;
-    }
-
-    .btn-group {
-      margin-top: 20px;
-    }
-
-    .btn-group button {
-      margin-right: 10px;
-    }
-
-    .debug {
-      font-size: 12px;
-      color: #ccc;
-      margin-top: 10px;
-    }
+    body { font-family: Arial, sans-serif; background:#111; color:#fff; padding:20px; }
+    h1 { color:#ffd700; margin:0 0 12px; }
+    input, select, button { padding:8px; margin:5px; font-size:16px; }
+    #matchInfo { margin-top:20px; padding:15px; background:#222; border:1px solid #444; border-radius:10px; }
+    .btn-group { margin-top:20px; display:flex; flex-wrap:wrap; gap:10px; }
+    .btn-group button { margin-right:0; }
+    .debug { font-size:12px; color:#ccc; margin-top:10px; white-space:pre-wrap; }
+    .row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#333; border:1px solid #555; font-size:12px; }
+    .colorSwatch { display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid #000; margin-right:6px; vertical-align:middle; }
+    .primary { background:#2d6a4f; border-color:#3a7a5d; }
   </style>
 </head>
 <body>
   <h1>🎮 League 7 Broadcast Control Panel</h1>
 
-  <label for="matchIdInput">Enter Match ID:</label>
-  <input type="number" id="matchIdInput" placeholder="e.g., 3" />
-  <button onclick="loadMatchData()">Load Match</button>
+  <div class="row">
+    <label for="matchIdInput">Enter Match ID:</label>
+    <input type="number" id="matchIdInput" placeholder="e.g., 1" />
+    <button id="btnLoad">Load Match</button>
+    <span class="pill">Auto-refresh: 5s</span>
+    <span class="pill">Mapped: C,D,E,F,S,T (Row 2 headers)</span>
+  </div>
 
   <div id="matchInfo">
     <h2>Match Preview</h2>
     <p><strong>Division:</strong> <span id="division">-</span></p>
-    <p><strong>Team A:</strong> <span id="teamA">-</span></p>
-    <p><strong>Team B:</strong> <span id="teamB">-</span></p>
+    <p>
+      <strong>Team A:</strong>
+      <span id="teamAName">-</span>
+      <span id="teamATag" class="pill" title="TeamTag">-</span>
+      <span id="teamAColors"></span>
+    </p>
+    <p>
+      <strong>Team B:</strong>
+      <span id="teamBName">-</span>
+      <span id="teamBTag" class="pill" title="TeamTag">-</span>
+      <span id="teamBColors"></span>
+    </p>
     <p><strong>Series Score:</strong> <span id="series">-</span></p>
   </div>
 
@@ -63,65 +50,220 @@
     <button onclick="openOverlay('index.html')">🟩 Show In-Game Overlay</button>
     <button onclick="openOverlay('matchup.html')">🔷 Show Matchup Overlay</button>
     <button onclick="openOverlay('roster.html')">🟨 Show Roster Overlay</button>
+    <button id="btnPush" class="primary">🚀 Push to Overlay</button>
   </div>
 
   <div class="debug" id="debug"></div>
 
   <script>
-    const matchResultsURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=834810832&single=true&output=csv";
+    // === Sheets ===
+    const MATCH_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=834810832&single=true&output=csv";
+    const TEAMS_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=495267531&single=true&output=csv";
 
-    async function loadMatchData() {
-      const matchId = document.getElementById('matchIdInput').value.trim();
-      if (!matchId) return alert("Please enter a Match ID.");
+    // === Column mapping per your layout ===
+    // 0-based: A=0 ... C=2 D=3 E=4 F=5 ... S=18 T=19
+    const COL = {
+      DIVISION: 2,   // C
+      MATCH_ID: 3,   // D
+      TEAM_A:   4,   // E
+      TEAM_B:   5,   // F
+      SERIES_A: 18,  // S
+      SERIES_B: 19   // T
+    };
+    const HEADER_ROW_INDEX = 1; // Row 2 is headers (0-based in CSV)
 
-      const response = await fetch(matchResultsURL);
-      const text = await response.text();
-      const rows = text.trim().split("\n").map(row => row.split(","));
+    // === CSV helpers ===
+    function parseCSV(text){
+      const rows=[]; let cur=[]; let val=""; let inQ=false;
+      for(let i=0;i<text.length;i++){
+        const c=text[i], n=text[i+1];
+        if(inQ){
+          if(c==='"' && n==='"'){ val+='"'; i++; }
+          else if(c==='"'){ inQ=false; }
+          else { val+=c; }
+        } else {
+          if(c==='"'){ inQ=true; }
+          else if(c===','){ cur.push(val); val=""; }
+          else if(c==='\n'){ cur.push(val); rows.push(cur); cur=[]; val=""; }
+          else if(c!=='\r'){ val+=c; }
+        }
+      }
+      if(val.length || cur.length){ cur.push(val); rows.push(cur); }
+      return rows;
+    }
+    const norm  = s => String(s||"").trim();
+    const lower = s => norm(s).toLowerCase();
+    const safeColor = (hex, fb="#222") => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(norm(hex)) ? norm(hex) : fb;
 
-      // Row 2 is actual headers
-      const headers = rows[1];
-      const dataRows = rows.slice(2); // Start at row 3
+    // === Teams directory (cache in-memory) ===
+    let TEAM_ROWS = [];
+    let BY_TAG = new Map();   // tag(lower) -> row
+    let BY_NAME = new Map();  // name(lower) -> row
 
-      const matchIDIndex = 3; // Column D
-      const divisionIndex = 2; // Column C
-      const teamAIndex = 4;    // Column E
-      const teamBIndex = 5;    // Column F
-      const seriesAIndex = headers.length - 2;
-      const seriesBIndex = headers.length - 1;
+    async function loadTeams(){
+      const res = await fetch(TEAMS_CSV, { cache:"no-store" });
+      if(!res.ok) throw new Error("Failed to fetch Teams CSV");
+      const raw = parseCSV(await res.text());
+      const headers = raw[0].map(h=>h.trim());
+      const data = raw.slice(1).filter(r => r.some(c => norm(c).length));
+      TEAM_ROWS = data.map(r => {
+        const o={}; headers.forEach((h,i)=>o[h]=(r[i]??"").trim()); return o;
+      });
+      BY_TAG.clear(); BY_NAME.clear();
+      for(const r of TEAM_ROWS){
+        if(r.TeamTag)  BY_TAG.set(lower(r.TeamTag), r);
+        if(r.TeamName) BY_NAME.set(lower(r.TeamName), r);
+      }
+    }
+    function resolveTeam(q){
+      if(!q) return null;
+      return BY_TAG.get(lower(q)) || BY_NAME.get(lower(q)) || null;
+    }
 
-      const matchRow = dataRows.find(row => row[matchIDIndex] === matchId);
-      if (!matchRow) {
-        alert("Match ID not found.");
-        document.getElementById("debug").textContent = `[DEBUG] Match ID ${matchId} not found.`;
+    // === Match results (fixed indices) ===
+    async function getMatchRowById(matchId){
+      const res = await fetch(MATCH_CSV, { cache:"no-store" });
+      if(!res.ok) throw new Error("Failed to fetch Match Results CSV");
+      const rows = parseCSV(await res.text());
+
+      // Data rows start after header row (Row 3+ in the sheet)
+      const dataRows = rows.slice(HEADER_ROW_INDEX + 1);
+
+      // Find row whose D column equals matchId (string compare)
+      return dataRows.find(r => norm(r[COL.MATCH_ID]) === String(matchId)) || null;
+    }
+
+    // === UI helpers ===
+    function setText(id, v){ document.getElementById(id).textContent = v; }
+    function showColors(id, primary, secondary){
+      const el = document.getElementById(id);
+      el.innerHTML = "";
+      if(primary){
+        const s1 = document.createElement("span");
+        s1.className = "colorSwatch";
+        s1.style.background = safeColor(primary, "#333");
+        el.appendChild(s1);
+      }
+      if(secondary){
+        const s2 = document.createElement("span");
+        s2.className = "colorSwatch";
+        s2.style.background = safeColor(secondary, "#333");
+        el.appendChild(s2);
+      }
+    }
+    function logDebug(msg){ document.getElementById("debug").textContent = String(msg); }
+
+    // === Shared state (latest loaded match) ===
+    let lastMatchPayload = null;
+
+    // Build the rich matchData object the overlays use
+    function buildMatchDataObject({ matchId, division, A, B, seriesA, seriesB }){
+      return {
+        version: Date.now(),                 // bump on each push/load
+        matchId,
+        division,
+        // tags are canonical selectors
+        teamA: A.TeamTag || A.TeamName,
+        teamB: B.TeamTag || B.TeamName,
+        // extras for convenience
+        teamAName: A.TeamName || "",
+        teamBName: B.TeamName || "",
+        teamAColors: { primary: A.PrimaryColor || "", secondary: A.SecondaryColor || "" },
+        teamBColors: { primary: B.PrimaryColor || "", secondary: B.SecondaryColor || "" },
+        seriesScore: `${seriesA || "0"} - ${seriesB || "0"}`
+      };
+    }
+
+    // === Main ===
+    async function loadMatchData(){
+      const matchId = norm(document.getElementById('matchIdInput').value);
+      if(!matchId){ alert("Please enter a Match ID."); return; }
+
+      try{
+        if(TEAM_ROWS.length === 0) await loadTeams();
+
+        const row = await getMatchRowById(matchId);
+        if(!row){
+          logDebug(`[DEBUG] Match ID ${matchId} not found.`);
+          return;
+        }
+
+        const division = norm(row[COL.DIVISION]);
+        const teamA_in  = norm(row[COL.TEAM_A]); // may be tag or full name
+        const teamB_in  = norm(row[COL.TEAM_B]); // may be tag or full name
+        const seriesA = norm(row[COL.SERIES_A]) || "0";
+        const seriesB = norm(row[COL.SERIES_B]) || "0";
+
+        const A = resolveTeam(teamA_in) || { TeamTag: teamA_in, TeamName: teamA_in };
+        const B = resolveTeam(teamB_in) || { TeamTag: teamB_in, TeamName: teamB_in };
+
+        // Preview panel
+        setText("division", division || "-");
+        setText("teamAName", A.TeamName || "-");
+        setText("teamBName", B.TeamName || "-");
+        setText("teamATag", A.TeamTag || "-");
+        setText("teamBTag", B.TeamTag || "-");
+        showColors("teamAColors", A.PrimaryColor, A.SecondaryColor);
+        showColors("teamBColors", B.PrimaryColor, B.SecondaryColor);
+        setText("series", `${seriesA} - ${seriesB}`);
+
+        // Prepare payload and save (legacy + lastMatchPayload)
+        lastMatchPayload = buildMatchDataObject({ matchId, division, A, B, seriesA, seriesB });
+        localStorage.setItem("matchData", JSON.stringify(lastMatchPayload));
+
+        logDebug(`[DEBUG] Loaded Match ${matchId}
+Division: ${division}
+A: ${lastMatchPayload.teamA} (${A.TeamName}) [${A.PrimaryColor||"-"}, ${A.SecondaryColor||"-"}]
+B: ${lastMatchPayload.teamB} (${B.TeamName}) [${B.PrimaryColor||"-"}, ${B.SecondaryColor||"-"}]
+Series: ${seriesA} - ${seriesB}`);
+
+      } catch(err){
+        console.error(err);
+        logDebug(`[ERROR] ${err.message || err}`);
+      }
+    }
+
+    // 🚀 Push to overlay now (writes current payload to scene-specific keys too)
+    function pushToOverlay(){
+      if(!lastMatchPayload){
+        const md = JSON.parse(localStorage.getItem("matchData") || "{}");
+        if(md && md.matchId){ lastMatchPayload = md; }
+      }
+      if(!lastMatchPayload){
+        alert("Load a match first.");
         return;
       }
+      // bump version so listeners notice the change
+      const payload = { ...lastMatchPayload, version: Date.now() };
 
-      const teamA = matchRow[teamAIndex];
-      const teamB = matchRow[teamBIndex];
-      const division = matchRow[divisionIndex];
-      const seriesScore = `${matchRow[seriesAIndex]} - ${matchRow[seriesBIndex]}`;
+      localStorage.setItem("matchData", JSON.stringify(payload));           // legacy
+      localStorage.setItem("matchData_ingame", JSON.stringify(payload));    // in-game scene
+      localStorage.setItem("matchData_matchup", JSON.stringify(payload));   // matchup scene
+      localStorage.setItem("matchData_roster", JSON.stringify(payload));    // roster scene
 
-      // Show preview
-      document.getElementById("teamA").textContent = teamA;
-      document.getElementById("teamB").textContent = teamB;
-      document.getElementById("division").textContent = division;
-      document.getElementById("series").textContent = seriesScore;
-
-      // Store for overlays to access
-      localStorage.setItem("matchData", JSON.stringify({
-        matchId,
-        teamA,
-        teamB,
-        division,
-        seriesScore
-      }));
-
-      document.getElementById("debug").textContent = `[DEBUG] Loaded: Match ID ${matchId}, ${teamA} vs ${teamB}, Series ${seriesScore}`;
+      logDebug(`[PUSH] Sent to overlay keys @ ${new Date(payload.version).toLocaleTimeString()}`);
     }
 
-    function openOverlay(file) {
-      window.open(file, '_blank');
-    }
+    function openOverlay(file){ window.open(file, '_blank'); }
+
+    // Wire up
+    document.getElementById("btnLoad").addEventListener("click", loadMatchData);
+    document.getElementById("btnPush").addEventListener("click", pushToOverlay);
+
+    // Prefill last matchId on refresh
+    (function hydrate(){
+      const md = JSON.parse(localStorage.getItem("matchData") || "{}");
+      if(md.matchId) document.getElementById("matchIdInput").value = md.matchId;
+      if(md && md.matchId) lastMatchPayload = md;
+    })();
+
+    // 🔄 Auto-refresh every 5 seconds if a match is loaded
+    setInterval(() => {
+      const md = JSON.parse(localStorage.getItem("matchData") || "{}");
+      if (md.matchId) {
+        loadMatchData(); // re-fetch match data from the sheet
+      }
+    }, 5000);
   </script>
 </body>
 </html>
