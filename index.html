@@ -6,144 +6,223 @@
   <title>League 7 In-Game Overlay</title>
   <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: transparent;
-      overflow: hidden;
-      font-family: 'IM Fell English SC', serif;
-      width: 100%;
-      height: 100%;
-    }
+    html, body { margin:0; padding:0; background:transparent; overflow:hidden; font-family:'IM Fell English SC', serif; width:100%; height:100%; }
 
     #overlay {
-      position: relative;
-      width: 1920px;
-      height: 1080px;
-      box-sizing: border-box;
-      border: 15px solid;
-      border-image: linear-gradient(135deg, #ff0000, #0000ff) 1;
-      z-index: 1;
+      position: relative; width:1920px; height:1080px; box-sizing:border-box;
+      border:15px solid; border-image:linear-gradient(135deg,#ff0000,#0000ff) 1; z-index:1;
     }
+    #background { width:100%; height:100%; position:absolute; top:0; left:0; pointer-events:none; z-index:0; }
 
-    #background {
-      width: 100%;
-      height: 100%;
-      position: absolute;
-      top: 0;
-      left: 0;
-      pointer-events: none;
-      z-index: 0;
+    #teamA, #teamB {
+      position:absolute; top:35px; color:white; font-weight:bold; font-size:36px; z-index:2;
+      white-space:nowrap; max-width:540px; overflow:hidden; text-overflow:ellipsis;
     }
+    #teamA { left:390px; }
+    #teamB { left:1074px; }
 
-    #teamA {
-      position: absolute;
-      top: 35px;
-      left: 390px;
-      color: white;
-      font-weight: bold;
-      font-size: 36px;
-      z-index: 2;
+    #scoreA, #scoreB {
+      position:absolute; color:black; font-size:56px; font-weight:bold; text-shadow:2px 2px 4px #000; z-index:3;
     }
+    #scoreA { top:87px; left:595px; transform:translateX(-50%); }
+    #scoreB { top:86px; right:595px; transform:translateX(50%); }
 
-    #teamB {
-      position: absolute;
-      top: 35px;
-      left: 1074px;
-      color: white;
-      font-weight: bold;
-      font-size: 36px;
-      z-index: 2;
+    .team-icon { width:80px; height:80px; position:absolute; top:18px; z-index:2; display:none; }
+    #iconA { left:280px; }  #iconB { right:330px; }
+
+    /* Tiny on-page control strip (can be hidden in OBS if you use a separate control page) */
+    #controls {
+      position: fixed; top:12px; left:12px; z-index:99;
+      background: rgba(0,0,0,0.6); padding:10px 12px; border-radius:10px; backdrop-filter: blur(4px);
+      font-family: system-ui, sans-serif; font-size:14px; color:#fff;
     }
-
-    #scoreA {
-      position: absolute;
-      top: 87px;
-      left: 595px;
-      transform: translateX(-50%);
-      color: black;
-      font-size: 56px;
-      font-weight: bold;
-      text-shadow: 2px 2px 4px #000;
-      z-index: 3;
+    #controls select, #controls input {
+      background:#111; color:#fff; border:1px solid #444; border-radius:6px; padding:4px 6px; margin-left:6px;
     }
-
-    #scoreB {
-      position: absolute;
-      top: 86px;
-      right: 595px;
-      transform: translateX(50%);
-      color: black;
-      font-size: 56px;
-      font-weight: bold;
-      text-shadow: 2px 2px 4px #000;
-      z-index: 3;
-    }
-
-    .team-icon {
-      width: 80px;
-      height: 80px;
-      position: absolute;
-      top: 18px;
-      z-index: 2;
-    }
-
-    #iconA { left: 280px; }
-    #iconB { right: 330px; }
+    #controls label { margin-right:8px; }
   </style>
 </head>
 <body>
+  <!-- Controls (use only while testing; you can host a separate control panel too) -->
+  <div id="controls">
+    <label>Team A:
+      <select id="selectA"></select>
+    </label>
+    <label>Team B:
+      <select id="selectB"></select>
+    </label>
+    <label>Score A:
+      <input id="inputScoreA" type="number" min="0" value="0" style="width:64px;">
+    </label>
+    <label>Score B:
+      <input id="inputScoreB" type="number" min="0" value="0" style="width:64px;">
+    </label>
+  </div>
+
   <div id="overlay">
     <img id="background" src="overlay.png" alt="Overlay background" />
 
-    <!-- Team Logos (hidden for now) -->
-    <img id="iconA" class="team-icon" style="display: none;" alt="Team A Logo">
-    <img id="iconB" class="team-icon" style="display: none;" alt="Team B Logo">
+    <img id="iconA" class="team-icon" alt="Team A Logo">
+    <img id="iconB" class="team-icon" alt="Team B Logo">
 
-    <!-- Team Names -->
     <div id="teamA">Team A</div>
     <div id="teamB">Team B</div>
 
-    <!-- Scores (static for now) -->
     <div id="scoreA">0</div>
     <div id="scoreB">0</div>
   </div>
 
   <script>
-    function adjustFontSize(id) {
-      const el = document.getElementById(id);
-      const length = el.textContent.length;
+    // Source sheet -> CSV (auto-convert from your pubhtml link)
+    const SHEET_PUBHTML = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pubhtml?gid=495267531&single=true";
+    const CSV_URL = SHEET_PUBHTML.replace("pubhtml", "pub") + "&output=csv";
 
-      if (length > 16) {
-        el.style.fontSize = "26px";
-      } else if (length > 12) {
-        el.style.fontSize = "30px";
-      } else {
-        el.style.fontSize = "36px";
+    // State
+    let TEAM_ROWS = [];
+    let INDEX_BY_TAG = new Map(); // tag -> row
+    let INDEX_BY_NAME = new Map(); // name -> row
+
+    function normalize(s){ return String(s||"").trim().toLowerCase(); }
+    function safeColor(hex, fallback="#222"){ const v=String(hex||"").trim(); return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)?v:fallback; }
+
+    function parseCSV(text){
+      const rows=[]; let cur=[]; let val=""; let inQ=false;
+      for(let i=0;i<text.length;i++){
+        const c=text[i], n=text[i+1];
+        if(inQ){
+          if(c==='"' && n==='\"'){ val+='"'; i++; }
+          else if(c==='"'){ inQ=false; }
+          else { val+=c; }
+        } else {
+          if(c==='"'){ inQ=true; }
+          else if(c===','){ cur.push(val); val=""; }
+          else if(c==='\n'){ cur.push(val); rows.push(cur); cur=[]; val=""; }
+          else if(c!=='\r'){ val+=c; }
+        }
       }
+      if(val.length || cur.length){ cur.push(val); rows.push(cur); }
+      return rows;
+    }
+    function toObjects(rows){
+      if(!rows.length) return [];
+      const headers = rows[0].map(h=>h.trim());
+      return rows.slice(1)
+        .filter(r=>r.some(c=>String(c).trim().length))
+        .map(r=>{
+          const o={}; headers.forEach((h,i)=>o[h]=(r[i]??"").trim()); return o;
+        });
+    }
+    function adjustFontSize(id){
+      const el=document.getElementById(id);
+      const len=el.textContent.trim().length;
+      el.style.fontSize = len>20? "24px" : len>16? "26px" : len>12? "30px" : "36px";
+    }
+    function setTeamText(id, text){ const el=document.getElementById(id); el.textContent=text||""; adjustFontSize(id); }
+    function setBorderGradient(teamA, teamB){
+      const a=safeColor(teamA?.PrimaryColor,"#444");
+      const b=safeColor(teamB?.PrimaryColor,"#222");
+      document.getElementById("overlay").style.borderImage = `linear-gradient(135deg, ${a}, ${b}) 1`;
+    }
+    function applyScores(a,b){
+      if(typeof a==="number") document.getElementById("scoreA").textContent=a;
+      if(typeof b==="number") document.getElementById("scoreB").textContent=b;
     }
 
-    function applyMatchData() {
-      const data = JSON.parse(localStorage.getItem("matchData"));
-      if (!data) return;
-
-      const { teamA, teamB } = data;
-
-      const teamAEl = document.getElementById("teamA");
-      const teamBEl = document.getElementById("teamB");
-
-      teamAEl.textContent = teamA;
-      teamBEl.textContent = teamB;
-
-      adjustFontSize("teamA");
-      adjustFontSize("teamB");
-
-      // Optional: Add gradient if colors are known later
-      // const overlay = document.getElementById("overlay");
-      // overlay.style.borderImage = `linear-gradient(135deg, ${data.colorA}, ${data.colorB}) 1`;
+    function indexTeams(rows){
+      INDEX_BY_TAG.clear(); INDEX_BY_NAME.clear();
+      rows.forEach(r=>{
+        const tag=normalize(r.TeamTag);
+        const name=normalize(r.TeamName);
+        if(tag) INDEX_BY_TAG.set(tag, r);
+        if(name) INDEX_BY_NAME.set(name, r);
+      });
     }
 
-    window.onload = applyMatchData;
+    async function loadTeams(){
+      const res = await fetch(CSV_URL, { cache:"no-store" });
+      const text = await res.text();
+      TEAM_ROWS = toObjects(parseCSV(text));
+      indexTeams(TEAM_ROWS);
+      populateSelects();
+      hydrateFromLocalStorage(); // preselect if saved
+      applyFromSelects();        // render overlay
+    }
+
+    function populateSelects(){
+      const selA=document.getElementById("selectA");
+      const selB=document.getElementById("selectB");
+      selA.innerHTML=""; selB.innerHTML="";
+
+      // Build options showing TAG only (value=TAG, label=TAG)
+      // If you prefer "TAG — Team Name", change textContent below.
+      const tags = TEAM_ROWS
+        .map(r=>r.TeamTag)
+        .filter(Boolean)
+        .filter((v,i,a)=>a.indexOf(v)===i) // unique
+        .sort((x,y)=>x.localeCompare(y));
+
+      for(const t of tags){
+        const o1=document.createElement("option"); o1.value=t; o1.textContent=t; selA.appendChild(o1);
+        const o2=document.createElement("option"); o2.value=t; o2.textContent=t; selB.appendChild(o2);
+      }
+
+      selA.addEventListener("change", onSelectChange);
+      selB.addEventListener("change", onSelectChange);
+      document.getElementById("inputScoreA").addEventListener("input", onScoreChange);
+      document.getElementById("inputScoreB").addEventListener("input", onScoreChange);
+    }
+
+    function onSelectChange(){
+      // Save chosen tags; overlay will display full names
+      const tagA = document.getElementById("selectA").value || "";
+      const tagB = document.getElementById("selectB").value || "";
+      const md = JSON.parse(localStorage.getItem("matchData") || "{}");
+      md.teamA = tagA; md.teamB = tagB;
+      localStorage.setItem("matchData", JSON.stringify(md));
+      applyFromSelects();
+    }
+
+    function onScoreChange(){
+      const scoreA = Number(document.getElementById("inputScoreA").value);
+      const scoreB = Number(document.getElementById("inputScoreB").value);
+      const md = JSON.parse(localStorage.getItem("matchData") || "{}");
+      md.scoreA = isNaN(scoreA) ? 0 : scoreA;
+      md.scoreB = isNaN(scoreB) ? 0 : scoreB;
+      localStorage.setItem("matchData", JSON.stringify(md));
+      applyScores(md.scoreA, md.scoreB);
+    }
+
+    function hydrateFromLocalStorage(){
+      const md = JSON.parse(localStorage.getItem("matchData") || "{}");
+      if(md.teamA) document.getElementById("selectA").value = md.teamA;
+      if(md.teamB) document.getElementById("selectB").value = md.teamB;
+      if(typeof md.scoreA==="number") document.getElementById("inputScoreA").value = md.scoreA;
+      if(typeof md.scoreB==="number") document.getElementById("inputScoreB").value = md.scoreB;
+    }
+
+    function resolveTeam(query){
+      if(!query) return null;
+      // First try TAG, then NAME
+      return INDEX_BY_TAG.get(normalize(query)) || INDEX_BY_NAME.get(normalize(query)) || null;
+    }
+
+    function applyFromSelects(){
+      const tagA = document.getElementById("selectA").value;
+      const tagB = document.getElementById("selectB").value;
+
+      const teamA = resolveTeam(tagA);
+      const teamB = resolveTeam(tagB);
+
+      setTeamText("teamA", teamA?.TeamName || tagA || "Team A");
+      setTeamText("teamB", teamB?.TeamName || tagB || "Team B");
+      setBorderGradient(teamA, teamB);
+
+      const md = JSON.parse(localStorage.getItem("matchData") || "{}");
+      applyScores(md.scoreA ?? 0, md.scoreB ?? 0);
+    }
+
+    // Boot
+    window.addEventListener("load", loadTeams);
   </script>
 </body>
 </html>
