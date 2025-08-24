@@ -20,16 +20,15 @@
   .wrap{width:min(1100px,100%); display:grid; grid-template-columns: 460px 1fr; gap:20px}
   .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 12px 28px rgba(0,0,0,.35)}
 
-  /* Match header (black box) */
   .match-head{
     background:#000; border:1px solid #222; border-radius:14px; padding:14px; margin-bottom:12px;
     display:grid; grid-template-columns: 1fr auto auto; gap:10px; align-items:center;
   }
-  .match-head input{height:40px}
+  .match-head input, .match-head select{height:40px}
 
   h2{margin:.4rem 0 1rem 0; font-size:18px}
   label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px}
-  input[type="text"], input[type="number"], input[type="password"]{
+  input[type="text"], input[type="number"], input[type="password"], select{
     width:100%; padding:10px 12px; border-radius:10px; border:1px solid #232b4a; background:#0f1422; color:var(--text); outline:none;
   }
   .row{display:grid; grid-template-columns: 1fr 1fr; gap:12px}
@@ -43,14 +42,12 @@
   .btn.ghost{background:transparent}
   .tiny{font-size:11px; color:#8d96ac}
 
-  /* Team blocks */
   .team-card{background:var(--ink); border:1px solid var(--line); border-radius:12px; padding:12px}
-  .team-row{display:grid; grid-template-columns: 1fr 120px; gap:10px; align-items:end}
+  .team-row{display:grid; grid-template-columns: 1fr 150px; gap:10px; align-items:end}
   .swatches{display:flex; gap:8px; align-items:center}
   .sw{width:22px; height:22px; border-radius:6px; border:2px solid rgba(255,255,255,.9); box-shadow:0 0 6px rgba(0,0,0,.5)}
   .hex{font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:#b8c4e6}
 
-  /* Right column: preview & bin */
   .preview{
     position:relative; height:280px; border-radius:14px; overflow:hidden; background:#0b0f19; user-select:none;
     display:flex; align-items:center; justify-content:center; color:#9aa9ce;
@@ -74,7 +71,10 @@
       <div class="match-head">
         <div>
           <label>Match ID</label>
-          <input id="matchId" type="text" placeholder="e.g. 2025-WK3-M1" />
+          <!-- NEW: dropdown populated from Google Sheet -->
+          <select id="matchId">
+            <option value="">Loading…</option>
+          </select>
         </div>
         <button id="btnLoad" class="btn">Load Match</button>
         <button id="btnSave" class="btn ghost">Save Match</button>
@@ -90,9 +90,10 @@
           <div>
             <label>Score A</label>
             <div class="stack">
-              <button id="btnAminus" class="btn ghost">-</button>
-              <input id="scoreA" type="number" min="0" step="1" value="0" />
-              <button id="btnAplus" class="btn ghost">+</button>
+              <button id="btnAminus" class="btn ghost">−10</button>
+              <input id="scoreA" type="number" min="0" step="10" value="0" />
+              <button id="btnAplus" class="btn ghost">+10</button>
+              <button id="btnAplus30" class="btn ghost">+30</button>
             </div>
           </div>
         </div>
@@ -127,9 +128,10 @@
           <div>
             <label>Score B</label>
             <div class="stack">
-              <button id="btnBminus" class="btn ghost">-</button>
-              <input id="scoreB" type="number" min="0" step="1" value="0" />
-              <button id="btnBplus" class="btn ghost">+</button>
+              <button id="btnBminus" class="btn ghost">−10</button>
+              <input id="scoreB" type="number" min="0" step="10" value="0" />
+              <button id="btnBplus" class="btn ghost">+10</button>
+              <button id="btnBplus30" class="btn ghost">+30</button>
             </div>
           </div>
         </div>
@@ -201,7 +203,6 @@
 /* ========== helpers & state ========== */
 const $ = s => document.querySelector(s);
 const hexOK = v => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v||'').trim());
-const safeHex = (v,f) => hexOK(v) ? String(v).trim() : f;
 
 const LS_MATCHES = 'l7_matches_v1';   // a dictionary of { matchId: payload }
 const LS_PANEL   = 'l7_panel_cfg_v1'; // bin/key + rememberKey
@@ -225,6 +226,26 @@ function savePanelCfg(){
   localStorage.setItem(LS_PANEL, JSON.stringify(cfg));
 }
 
+/* ========== CSV helpers (uses Google Sheets "output=csv") ========== */
+// NEW: endpoints using output=csv for easy parsing
+const MATCHES_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=834810832&single=true&output=csv";
+const TEAMS_CSV   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=495267531&single=true&output=csv";
+
+function parseCSV(text){
+  // tiny CSV parser that handles quoted commas/newlines
+  const rows=[]; let cur=[''], i=0, s=text, inQ=false;
+  for(let c of s){
+    if(c === '"'){ inQ = !inQ; cur[i]+=c; }
+    else if(c === ',' && !inQ){ cur.push(''); i++; }
+    else if((c === '\n' || c === '\r') && !inQ){
+      if(cur.some(x=>x.length)){ rows.push(cur.map(x=>x.replace(/^\s+|\s+$/g,'').replace(/^"|"$/g,'').replace(/""/g,'"'))); }
+      cur=['']; i=0;
+    } else { cur[i]+=c; }
+  }
+  if(cur.some(x=>x.length)) rows.push(cur.map(x=>x.replace(/^\s+|\s+$/g,'').replace(/^"|"$/g,'').replace(/""/g,'"')));
+  return rows;
+}
+
 /* ========== preview (mirrors overlay) ========== */
 function renderPreview(){
   const A1 = $('#A1hex').textContent.trim();
@@ -243,9 +264,9 @@ function wireColor(id){
   const sw   = $('#'+id+'sw');
   const hex  = $('#'+id+'hex');
   const update = () => {
-    const val = pick.value;
+    const val = pick.value.toUpperCase();
     sw.style.background = val;
-    hex.textContent = val.toUpperCase();
+    hex.textContent = val;
     renderPreview();
   };
   pick.addEventListener('input', update);
@@ -253,11 +274,19 @@ function wireColor(id){
 }
 ['A1','A2','B1','B2'].forEach(wireColor);
 
-/* ========== score +/- ========== */
-$('#btnAplus').onclick  = ()=> $('#scoreA').value = (+$('#scoreA').value||0) + 1;
-$('#btnAminus').onclick = ()=> $('#scoreA').value = Math.max(0,(+$('#scoreA').value||0) - 1);
-$('#btnBplus').onclick  = ()=> $('#scoreB').value = (+$('#scoreB').value||0) + 1;
-$('#btnBminus').onclick = ()=> $('#scoreB').value = Math.max(0,(+$('#scoreB').value||0) - 1);
+/* ========== score buttons (+10, +30) ========== */
+// NEW: +10/-10 and +30
+const clamp0 = n => Math.max(0, n|0);
+function addScore(id, delta){
+  const el = $(id);
+  el.value = clamp0((+el.value||0) + delta);
+}
+$('#btnAplus').onclick   = ()=> addScore('#scoreA', +10);
+$('#btnAplus30').onclick = ()=> addScore('#scoreA', +30);
+$('#btnAminus').onclick  = ()=> addScore('#scoreA', -10);
+$('#btnBplus').onclick   = ()=> addScore('#scoreB', +10);
+$('#btnBplus30').onclick = ()=> addScore('#scoreB', +30);
+$('#btnBminus').onclick  = ()=> addScore('#scoreB', -10);
 
 /* ========== Save/Load Match (local, by matchId) ========== */
 function collectPayload(){
@@ -277,7 +306,6 @@ function fillFromPayload(p){
   $('#scoreA').value = p.mapScoreA ?? 0;
   $('#scoreB').value = p.mapScoreB ?? 0;
 
-  // set pickers -> swatch/hex will follow via 'input' dispatch
   if (hexOK(p?.teamAColors?.primary))  { $('#A1picker').value = p.teamAColors.primary;  $('#A1picker').dispatchEvent(new Event('input')); }
   if (hexOK(p?.teamAColors?.secondary)){ $('#A2picker').value = p.teamAColors.secondary; $('#A2picker').dispatchEvent(new Event('input')); }
   if (hexOK(p?.teamBColors?.primary))  { $('#B1picker').value = p.teamBColors.primary;  $('#B1picker').dispatchEvent(new Event('input')); }
@@ -285,9 +313,22 @@ function fillFromPayload(p){
   renderPreview();
 }
 
+function setStatus(msg, kind){
+  const el = $('#status');
+  el.textContent = msg;
+  el.classList.remove('ok','warn','err');
+  if (kind) el.classList.add(kind);
+}
+function setBinStatus(msg, kind){
+  const el = $('#binStatus');
+  el.textContent = msg;
+  el.classList.remove('ok','warn','err');
+  if (kind) el.classList.add(kind);
+}
+
 $('#btnSave').onclick = ()=>{
   const id = $('#matchId').value.trim();
-  if (!id) return setStatus('Enter a Match ID', 'warn');
+  if (!id) return setStatus('Pick a Match ID', 'warn');
   const matches = getMatches();
   matches[id] = collectPayload();
   setMatches(matches);
@@ -296,30 +337,16 @@ $('#btnSave').onclick = ()=>{
 
 $('#btnLoad').onclick = ()=>{
   const id = $('#matchId').value.trim();
-  if (!id) return setStatus('Enter a Match ID', 'warn');
+  if (!id) return setStatus('Pick a Match ID', 'warn');
   const m = getMatches()[id];
   if (!m){ setStatus(`No saved data for ${id}`, 'warn'); return; }
   fillFromPayload(m);
   setStatus(`Loaded ${id}`, 'ok');
 };
 
-/* ========== JSONBin push/read ========== */
+/* ========== JSONBin push/read (unchanged) ========== */
 const urlLatest = bin => `https://api.jsonbin.io/v3/b/${bin}/latest`;
 const urlWrite  = bin => `https://api.jsonbin.io/v3/b/${bin}`;
-
-function setStatus(msg, kind){
-  const el = $('#status');
-  el.textContent = msg;
-  el.classList.remove('ok','warn','err');
-  if (kind) el.classList.add(kind);
-}
-
-function setBinStatus(msg, kind){
-  const el = $('#binStatus');
-  el.textContent = msg;
-  el.classList.remove('ok','warn','err');
-  if (kind) el.classList.add(kind);
-}
 
 $('#btnPush').onclick = async ()=>{
   savePanelCfg();
@@ -363,9 +390,82 @@ async function doRead(){
 }
 $('#btnTest').onclick = doRead;
 
+/* ========== Google Sheets wiring ========== */
+// NEW: caches
+let MATCH_ROWS = []; // [{id, teamA, teamB}]
+let TEAM_COLORS = new Map(); // name -> {primary, secondary}
+
+// load teams (for hex lookups)
+async function loadTeamColors(){
+  const txt = await (await fetch(TEAMS_CSV, {cache:'no-store'})).text();
+  const rows = parseCSV(txt);
+  // rows[0] is header; data starts row 2 per your sheet
+  for(let i=1;i<rows.length;i++){
+    const [teamName,,,primary,secondary] = [rows[i][0], rows[i][1], rows[i][2], rows[i][2], rows[i][3]];
+    const name = rows[i][0]?.trim();
+    const pri  = rows[i][2]?.trim();
+    const sec  = rows[i][3]?.trim();
+    if(!name) continue;
+    if(/^#?[0-9a-f]{6}$/i.test(pri) && !pri.startsWith('#')) MATCH_ROWS; // noop, just to keep linter quiet
+    const fix = h => h ? (h.startsWith('#') ? h : '#'+h) : '';
+    TEAM_COLORS.set(name, { primary: fix(pri), secondary: fix(sec) });
+  }
+}
+
+// load matches (id in D, teams in E/F, starting Row 3)
+async function loadMatches(){
+  const txt = await (await fetch(MATCHES_CSV, {cache:'no-store'})).text();
+  const rows = parseCSV(txt);
+  // header is at row 2; actual data from row 3 => index 2
+  MATCH_ROWS = [];
+  for(let i=2;i<rows.length;i++){
+    const row = rows[i];
+    const id = (row[3]||'').trim();      // Column D
+    const teamA = (row[4]||'').trim();   // Column E
+    const teamB = (row[5]||'').trim();   // Column F
+    if(id) MATCH_ROWS.push({id, teamA, teamB});
+  }
+  // populate dropdown
+  const sel = $('#matchId');
+  sel.innerHTML = `<option value="">Select…</option>` + MATCH_ROWS.map(m=>`<option value="${m.id}">${m.id}</option>`).join('');
+}
+
+// when you change the Match ID, set names and colors
+function onMatchPicked(){
+  const id = $('#matchId').value.trim();
+  if(!id) return;
+  const m = MATCH_ROWS.find(x=>x.id === id);
+  if(!m) return;
+
+  $('#teamAName').value = m.teamA || 'Team A';
+  $('#teamBName').value = m.teamB || 'Team B';
+
+  // lookup hexes by team name
+  const A = TEAM_COLORS.get(m.teamA) || {};
+  const B = TEAM_COLORS.get(m.teamB) || {};
+
+  if(hexOK(A.primary)){ $('#A1picker').value = A.primary; $('#A1picker').dispatchEvent(new Event('input')); }
+  if(hexOK(A.secondary)){ $('#A2picker').value = A.secondary; $('#A2picker').dispatchEvent(new Event('input')); }
+  if(hexOK(B.primary)){ $('#B1picker').value = B.primary; $('#B1picker').dispatchEvent(new Event('input')); }
+  if(hexOK(B.secondary)){ $('#B2picker').value = B.secondary; $('#B2picker').dispatchEvent(new Event('input')); }
+
+  setStatus(`Loaded from sheet: ${id}`, 'ok');
+}
+
 /* ========== boot ========== */
-loadPanelCfg();
-renderPreview();
+async function boot(){
+  loadPanelCfg();
+  renderPreview();
+  try{
+    await Promise.all([loadTeamColors(), loadMatches()]);
+    $('#matchId').addEventListener('change', onMatchPicked);
+    $('#matchId').options.length ? setStatus('Sheet connected ✔', 'ok') : setStatus('No matches found', 'warn');
+  }catch(e){
+    console.error(e);
+    setStatus('Sheet read failed', 'err');
+  }
+}
+boot();
 </script>
 </body>
 </html>
