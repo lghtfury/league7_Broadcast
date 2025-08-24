@@ -22,7 +22,7 @@
   .wrap{
     width:min(1100px,100%);
     display:grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr;     /* single column */
     grid-template-rows: auto 1fr;   /* top = controls, bottom = preview */
     gap:20px;
     height: calc(100vh - 48px);
@@ -55,7 +55,7 @@
 
   .team-card{background:var(--ink); border:1px solid var(--line); border-radius:12px; padding:12px}
 
-  /* === New team header layout: name left, colors right === */
+  /* Name left, colors right */
   .team-head{
     display:grid;
     grid-template-columns: 1fr auto;
@@ -73,7 +73,7 @@
   .hex{font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:#b8c4e6; min-width:70px}
   .color-group input[type="color"]{width:38px; height:28px; padding:0; border:0; background:transparent}
 
-  /* Big centered score total + centered buttons */
+  /* Big centered totals + centered buttons */
   .scoreTotal{
     text-align:center;
     font-size:28px;
@@ -84,7 +84,7 @@
   .scoreTotal strong{font-size:34px; color:#e9f1ff}
   .scoreBtns{justify-content:center; gap:12px}
 
-  /* Preview takes the bottom half */
+  /* Preview bottom */
   .wrap > .card:last-child{
     min-height:50vh;
     display:flex;
@@ -106,13 +106,13 @@
   .status{font-size:12px; color:#9fb0d8}
   .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
 
-  /* Hide the old JSONBin box to avoid confusion */
+  /* Hide the old JSONBin box */
   .jsonbin{display:none}
 </style>
 </head>
 <body>
   <div class="wrap">
-    <!-- TOP: Match header + Teams -->
+    <!-- TOP: Header + Teams -->
     <div class="card">
       <div class="match-head">
         <div>
@@ -121,7 +121,6 @@
             <option value="">Loading…</option>
           </select>
         </div>
-        <!-- RIGHT: Clear + Push + Status -->
         <div class="stack right">
           <button id="btnClearAll" class="btn ghost">Clear Scores</button>
           <button id="btnPush" class="btn primary">Push to Overlay</button>
@@ -130,7 +129,7 @@
       </div>
 
       <!-- Team A -->
-      <div class="team-card" style="margin-bottom:12px">
+      <div class="team-card" style="margin-bottom:12px; position:relative">
         <h2>Team A</h2>
 
         <div class="team-head">
@@ -152,7 +151,11 @@
           </div>
         </div>
 
+        <!-- Big total (driven by hidden #scoreA) -->
         <div class="scoreTotal">Score total: <strong><span id="liveA">0</span></strong></div>
+        <!-- Keep original logic: invisible numeric input as the source of truth -->
+        <input id="scoreA" type="number" value="0"
+               style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true" />
 
         <div class="stack scoreBtns">
           <button id="btnAminus30" class="btn ghost">−30</button>
@@ -163,7 +166,7 @@
       </div>
 
       <!-- Team B -->
-      <div class="team-card">
+      <div class="team-card" style="position:relative">
         <h2>Team B</h2>
 
         <div class="team-head">
@@ -185,7 +188,10 @@
           </div>
         </div>
 
+        <!-- Big total (driven by hidden #scoreB) -->
         <div class="scoreTotal">Score total: <strong><span id="liveB">0</span></strong></div>
+        <input id="scoreB" type="number" value="0"
+               style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true" />
 
         <div class="stack scoreBtns">
           <button id="btnBminus30" class="btn ghost">−30</button>
@@ -207,7 +213,7 @@
         Preview
       </div>
 
-      <!-- (Old JSONBin tools kept but hidden for now) -->
+      <!-- Old JSONBin tools (hidden) -->
       <div class="card jsonbin" style="margin-top:16px">
         <h2>JSONBin Settings</h2>
         <div class="stack" style="margin-top:10px">
@@ -221,11 +227,10 @@
   </div>
 
 <script>
-/* ========== helpers & state (no Save/Load) ========== */
+/* ===== helpers & persistent panel cfg (JSONBin UI hidden) ===== */
 const $ = s => document.querySelector(s);
 const hexOK = v => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v||'').trim());
-
-const LS_PANEL = 'l7_panel_cfg_v1'; // JSONBin rememberKey only (UI hidden)
+const LS_PANEL = 'l7_panel_cfg_v1';
 
 function loadPanelCfg(){
   try{
@@ -244,13 +249,13 @@ function savePanelCfg(){
   localStorage.setItem(LS_PANEL, JSON.stringify(cfg));
 }
 
-/* ========== CSV helpers (uses Google Sheets "output=csv") ========== */
+/* ===== CSV helpers (Google Sheets publish-to-csv) ===== */
 const MATCHES_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=834810832&single=true&output=csv";
 const TEAMS_CSV   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=495267531&single=true&output=csv";
 
 function parseCSV(text){
-  const rows=[]; let cur=[''], i=0, s=text, inQ=false;
-  for(let c of s){
+  const rows=[]; let cur=[''], i=0, inQ=false;
+  for(const c of text){
     if(c === '"'){ inQ = !inQ; cur[i]+=c; }
     else if(c === ',' && !inQ){ cur.push(''); i++; }
     else if((c === '\n' || c === '\r') && !inQ){
@@ -262,7 +267,7 @@ function parseCSV(text){
   return rows;
 }
 
-/* ========== preview (mirrors overlay) ========== */
+/* ===== preview (mirrors overlay borders) ===== */
 function renderPreview(){
   const A1 = $('#A1hex').textContent.trim();
   const A2 = $('#A2hex').textContent.trim();
@@ -274,7 +279,7 @@ function renderPreview(){
   $('#pvBottom').style.background = `linear-gradient(to right, ${A2}, ${B2})`;
 }
 
-/* ========== wire color pickers to swatches/hex text ========== */
+/* ===== wire color pickers ===== */
 function wireColor(id){
   const pick = $('#'+id+'picker');
   const sw   = $('#'+id+'sw');
@@ -290,11 +295,18 @@ function wireColor(id){
 }
 ['A1','A2','B1','B2'].forEach(wireColor);
 
-/* ========== score buttons and Clear Scores ========== */
+/* ===== scores: keep original logic, now with hidden inputs as source ===== */
+function syncTotalsFromInputs(){
+  const a = Number($('#scoreA')?.value) || 0;
+  const b = Number($('#scoreB')?.value) || 0;
+  $('#liveA').textContent = a;
+  $('#liveB').textContent = b;
+}
 const clamp0 = n => Math.max(0, n|0);
 function addScore(id, delta){
   const el = $(id);
-  el.value = clamp0((+el.value||0) + delta);
+  el.value = clamp0((+el.value || 0) + delta);
+  syncTotalsFromInputs();
 }
 $('#btnAminus30').onclick = ()=> addScore('#scoreA', -30);
 $('#btnAminus').onclick   = ()=> addScore('#scoreA', -10);
@@ -309,9 +321,10 @@ $('#btnBplus30').onclick  = ()=> addScore('#scoreB', +30);
 $('#btnClearAll').onclick = ()=>{
   $('#scoreA').value = 0;
   $('#scoreB').value = 0;
+  syncTotalsFromInputs();
 };
 
-/* ========== payload for Firebase push ========== */
+/* ===== payload for Firebase push (unchanged IDs) ===== */
 function collectPayload(){
   return {
     teamAName: $('#teamAName').value || 'Team A',
@@ -337,7 +350,7 @@ function setBinStatus(msg, kind){
   if (kind) el.classList.add(kind);
 }
 
-/* (Old JSONBin helpers left in but UI is hidden) */
+/* ===== JSONBin read (kept for parity; UI hidden) ===== */
 const urlLatest = bin => `https://api.jsonbin.io/v3/b/${bin}/latest`;
 async function doRead(){
   savePanelCfg();
@@ -351,13 +364,13 @@ async function doRead(){
     $('#lastJson').textContent = JSON.stringify(data?.record || data, null, 2);
     setBinStatus('Read OK', 'ok');
   }catch(e){
-    console.error('Read failed:', e);
+    console.error(e);
     setBinStatus('Read failed','err');
   }
 }
 $('#btnTest')?.addEventListener('click', doRead);
 
-/* ========== Google Sheets wiring (auto-populate) ========== */
+/* ===== Google Sheets: auto-populate on Match ID change ===== */
 let MATCH_ROWS = []; // [{id, teamA, teamB}]
 let TEAM_COLORS = new Map(); // name -> {primary, secondary}
 
@@ -412,6 +425,7 @@ function onMatchPicked(){
 async function boot(){
   loadPanelCfg();
   renderPreview();
+  syncTotalsFromInputs();               // ensure totals reflect hidden inputs on load
   try{
     await Promise.all([loadTeamColors(), loadMatches()]);
     $('#matchId').addEventListener('change', onMatchPicked);
@@ -424,13 +438,13 @@ async function boot(){
 boot();
 </script>
 
-<!-- ========== FIREBASE real-time push + live overlay totals ========== -->
+<!-- ===== FIREBASE push + live mirror ===== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
 import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
 
-/* ✅ Your Firebase config */
+/* Your Firebase config */
 const firebaseConfig = {
   apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
   authDomain: "league7overlay.firebaseapp.com",
@@ -450,7 +464,7 @@ await signInAnonymously(auth);
 const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || "main";
 const OVERLAY_REF = doc(db, "overlays", OVERLAY_ID);
 
-// Live subscribe to overlay totals so panel shows what stream has
+// Live mirror so panel shows overlay totals too
 onSnapshot(OVERLAY_REF, (snap) => {
   const data = snap.data() || {};
   const a = Number(data.mapScoreA) || 0;
@@ -459,6 +473,11 @@ onSnapshot(OVERLAY_REF, (snap) => {
   const elB = document.getElementById('liveB');
   if (elA) elA.textContent = a;
   if (elB) elB.textContent = b;
+  // keep hidden inputs in sync with overlay doc
+  const sA = document.getElementById('scoreA');
+  const sB = document.getElementById('scoreB');
+  if (sA) sA.value = a;
+  if (sB) sB.value = b;
 });
 
 // Push to Firestore on click
