@@ -60,33 +60,48 @@
     .edge.top    { background: linear-gradient(to right, var(--A1), var(--B1)); }
     .edge.bottom { background: linear-gradient(to right, var(--A2), var(--B2)); }
 
-    /* ---------- UI: team names & scores ---------- */
-    #teamA, #teamB {
+    /* ---------- Anchor boxes (measured from your PNG) ---------- */
+    .anchor {
       position: absolute;
-      top: 35px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 3; /* above frame edges */
+    }
+
+    /* Team name anchors (center text inside banner boxes) */
+    #bannerA { left: 839px;  top: 88px;  width: 451px; height: 61px;  }
+    #bannerB { left: 1529px; top: 90px;  width: 461px; height: 65px;  }
+
+    /* Score anchors (center digits inside score plates) */
+    #plateA  { left: 698px;  top: 134px; width: 192px; height: 43px;  }
+    #plateB  { left: 1420px; top: 139px; width: 199px; height: 48px;  }
+
+    /* ---------- Text styling (centered within anchors) ---------- */
+    #teamA, #teamB {
       color: white;
       font-weight: bold;
-      font-size: 36px;
-      z-index: 3;
+      font-size: 36px; /* auto-adjusted by JS below; this is the max */
       white-space: nowrap;
-      max-width: 540px;
+      max-width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
       text-align: center;
     }
-    #teamA { left: 460px; }
-    #teamB { right: 460px; }
 
     #scoreA, #scoreB {
-      position: absolute;
       color: black;
       font-size: 56px;
       font-weight: bold;
       text-shadow: 2px 2px 4px #000;
-      z-index: 3;
+      white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
     }
-    #scoreA { top: 87px; left: 595px; transform: translateX(-50%); }
-    #scoreB { top: 86px; right: 595px; transform: translateX(50%); }
   </style>
 </head>
 <body>
@@ -102,11 +117,11 @@
       <div class="edge left"></div>
     </div>
 
-    <!-- Team names and scores -->
-    <div id="teamA">Team A</div>
-    <div id="teamB">Team B</div>
-    <div id="scoreA">0</div>
-    <div id="scoreB">0</div>
+    <!-- Anchored, perfectly centered content -->
+    <div id="bannerA" class="anchor"><div id="teamA">Team A</div></div>
+    <div id="bannerB" class="anchor"><div id="teamB">Team B</div></div>
+    <div id="plateA"  class="anchor"><div id="scoreA">0</div></div>
+    <div id="plateB"  class="anchor"><div id="scoreB">0</div></div>
   </div>
 
   <script>
@@ -116,6 +131,7 @@
       return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : fallback;
     }
 
+    /* Keep your auto-size, but it now acts within the anchor width */
     function adjustFontSize(id) {
       const el = document.getElementById(id);
       const length = (el.textContent || "").trim().length;
@@ -143,8 +159,10 @@
       document.getElementById("teamB").textContent = data.teamBName || data.teamB || "Team B";
       adjustFontSize("teamA");
       adjustFontSize("teamB");
+
       document.getElementById("scoreA").textContent = data.mapScoreA ?? 0;
       document.getElementById("scoreB").textContent = data.mapScoreB ?? 0;
+
       setBorderGradient(
         data?.teamAColors?.primary,
         data?.teamAColors?.secondary,
@@ -152,6 +170,9 @@
         data?.teamBColors?.secondary
       );
     }
+
+    /* Expose for module script */
+    window.applyPayload = applyPayload;
   </script>
 
   <!-- ---------- Firestore live reader (ONLY) ---------- -->
@@ -180,7 +201,6 @@
     onSnapshot(doc(db, "overlays", OVERLAY_ID), (snap) => {
       const data = snap.data();
       if (!data) return;
-      // call the helper defined above
       window.applyPayload(data);
     });
   </script>
