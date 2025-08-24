@@ -38,7 +38,7 @@
   .match-head input, .match-head select{height:40px}
 
   h2{margin:.4rem 0 1rem 0; font-size:18px}
-  label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px}
+  label{display:block; font-size:12px; color:#8fa0c7; margin-bottom:6px}
   input[type="text"], input[type="number"], input[type="password"], select{
     width:100%; padding:10px 12px; border-radius:10px; border:1px solid #232b4a; background:#0f1422; color:var(--text); outline:none;
   }
@@ -88,7 +88,7 @@
 </head>
 <body>
   <div class="wrap">
-    <!-- TOP: Match header + Teams -->
+    <!-- TOP: Match header + Teams (NO Save/Load UI) -->
     <div class="card">
       <div class="match-head">
         <div>
@@ -97,7 +97,6 @@
             <option value="">Loading…</option>
           </select>
         </div>
-
         <!-- RIGHT: Clear + Push + Status -->
         <div class="stack right">
           <button id="btnClearAll" class="btn ghost">Clear Scores</button>
@@ -228,21 +227,18 @@
   </div>
 
 <script>
-/* ========== helpers & state ========== */
+/* ========== helpers & state (no Save/Load) ========== */
 const $ = s => document.querySelector(s);
 const hexOK = v => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v||'').trim());
 
-const LS_MATCHES = 'l7_matches_v1';   // a dictionary of { matchId: payload }
-const LS_PANEL   = 'l7_panel_cfg_v1'; // bin/key + rememberKey
+const LS_PANEL = 'l7_panel_cfg_v1'; // JSONBin rememberKey only (UI hidden)
 
-function getMatches(){ try{ return JSON.parse(localStorage.getItem(LS_MATCHES) || '{}'); }catch{ return {}; } }
-function setMatches(obj){ localStorage.setItem(LS_MATCHES, JSON.stringify(obj||{})); }
 function loadPanelCfg(){
   try{
     const s = JSON.parse(localStorage.getItem(LS_PANEL) || '{}');
-    $('#binId').value = s.bin || '';
-    $('#rememberKey').checked = !!s.rememberKey;
-    $('#masterKey').value = s.rememberKey ? (s.masterKey || '') : '';
+    $('#binId') && ($('#binId').value = s.bin || '');
+    $('#rememberKey') && ($('#rememberKey').checked = !!s.rememberKey);
+    $('#masterKey') && ($('#masterKey').value = s.rememberKey ? (s.masterKey || '') : '');
   }catch{}
 }
 function savePanelCfg(){
@@ -321,7 +317,7 @@ $('#btnClearAll').onclick = ()=>{
   $('#scoreB').value = 0;
 };
 
-/* ========== Save/Load Match (local, by matchId) ========== */
+/* ========== payload for Firebase push ========== */
 function collectPayload(){
   return {
     teamAName: $('#teamAName').value || 'Team A',
@@ -333,19 +329,6 @@ function collectPayload(){
     version: Date.now()
   };
 }
-function fillFromPayload(p){
-  $('#teamAName').value = p.teamAName || 'Team A';
-  $('#teamBName').value = p.teamBName || 'Team B';
-  $('#scoreA').value = p.mapScoreA ?? 0;
-  $('#scoreB').value = p.mapScoreB ?? 0;
-
-  if (hexOK(p?.teamAColors?.primary))  { $('#A1picker').value = p.teamAColors.primary;  $('#A1picker').dispatchEvent(new Event('input')); }
-  if (hexOK(p?.teamAColors?.secondary)){ $('#A2picker').value = p.teamAColors.secondary; $('#A2picker').dispatchEvent(new Event('input')); }
-  if (hexOK(p?.teamBColors?.primary))  { $('#B1picker').value = p.teamBColors.primary;  $('#B1picker').dispatchEvent(new Event('input')); }
-  if (hexOK(p?.teamBColors?.secondary)){ $('#B2picker').value = p.teamBColors.secondary; $('#B2picker').dispatchEvent(new Event('input')); }
-  renderPreview();
-}
-
 function setStatus(msg, kind){
   const el = $('#status');
   el.textContent = msg;
@@ -362,7 +345,6 @@ function setBinStatus(msg, kind){
 
 /* (Old JSONBin helpers left in but UI is hidden) */
 const urlLatest = bin => `https://api.jsonbin.io/v3/b/${bin}/latest`;
-const urlWrite  = bin => `https://api.jsonbin.io/v3/b/${bin}`;
 async function doRead(){
   savePanelCfg();
   const bin = $('#binId')?.value?.trim?.();
@@ -381,7 +363,7 @@ async function doRead(){
 }
 $('#btnTest')?.addEventListener('click', doRead);
 
-/* ========== Google Sheets wiring ========== */
+/* ========== Google Sheets wiring (auto-populate) ========== */
 let MATCH_ROWS = []; // [{id, teamA, teamB}]
 let TEAM_COLORS = new Map(); // name -> {primary, secondary}
 
