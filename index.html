@@ -91,6 +91,12 @@
   </div>
 
   <script>
+    /* ========= OPTIONAL CLOUD SYNC =========
+       If panel and overlay are in different apps (Chrome vs Streamlabs),
+       localStorage won't sync. Flip USE_JSONBIN to true and set your bin URL. */
+    const USE_JSONBIN = false;
+    const JSONBIN_LATEST = "https://api.jsonbin.io/v3/b/YOUR_BIN_ID/latest"; // set if USE_JSONBIN = true
+
     function safeColor(hex, fallback = "#222") {
       const v = String(hex || "").trim();
       return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : fallback;
@@ -100,17 +106,26 @@
       const length = (el.textContent || "").trim().length;
       el.style.fontSize = length > 20 ? "24px" : length > 16 ? "26px" : length > 12 ? "30px" : "36px";
     }
-    function setBorderGradient(aHex, bHex) {
-      const a = safeColor(aHex, "#444");
-      const b = safeColor(bHex, "#222");
+
+    // NEW: 4-stop gradient (A.primary -> A.secondary -> B.primary -> B.secondary)
+    function setBorderGradient(a1, a2, b1, b2) {
+      const A1 = safeColor(a1, "#555");
+      const A2 = safeColor(a2, "#333");
+      const B1 = safeColor(b1, "#333");
+      const B2 = safeColor(b2, "#111");
+
+      // Border
       document.getElementById("overlay").style.borderImage =
-        `linear-gradient(135deg, ${a}, ${b}) 1`;
+        `linear-gradient(135deg, ${A1} 0%, ${A2} 45%, ${B1} 55%, ${B2} 100%) 1`;
+
+      // Per-side wash (left A1->A2, right B1->B2)
       document.getElementById("colorWash").style.background =
-        `linear-gradient(to right, ${a} 0%, ${a} 50%, ${b} 50%, ${b} 100%)`;
+        `linear-gradient(to right, ${A1} 0%, ${A2} 50%, ${B1} 50%, ${B2} 100%)`;
     }
 
     function applyPayload(data) {
       if (!data) return;
+
       document.getElementById("teamA").textContent = data.teamAName || data.teamA || "Team A";
       document.getElementById("teamB").textContent = data.teamBName || data.teamB || "Team B";
       adjustFontSize("teamA");
@@ -119,11 +134,16 @@
       document.getElementById("scoreA").textContent = data.mapScoreA ?? 0;
       document.getElementById("scoreB").textContent = data.mapScoreB ?? 0;
 
-      setBorderGradient(data?.teamAColors?.primary, data?.teamBColors?.primary);
+      setBorderGradient(
+        data?.teamAColors?.primary,
+        data?.teamAColors?.secondary,
+        data?.teamBColors?.primary,
+        data?.teamBColors?.secondary
+      );
     }
 
-    // Initial load
-    (function init() {
+    // ----- LOCAL MODE (same-browser testing) -----
+    function initLocal() {
       try {
         const initial = JSON.parse(
           localStorage.getItem("matchData_ingame") ||
@@ -131,14 +151,37 @@
         );
         if (Object.keys(initial).length) applyPayload(initial);
       } catch (_) {}
-    })();
+      window.addEventListener("storage", (e) => {
+        if (e.key === "matchData_ingame" || e.key === "matchData") {
+          try { applyPayload(JSON.parse(e.newValue || "{}")); } catch (_) {}
+        }
+      });
+    }
 
-    // Listen for panel pushes
-    window.addEventListener("storage", (e) => {
-      if (e.key === "matchData_ingame" || e.key === "matchData") {
-        try { applyPayload(JSON.parse(e.newValue || "{}")); } catch (_) {}
+    // ----- JSONBIN MODE (cross-app sync) -----
+    let lastVersion = null;
+    async function tickJSON() {
+      try {
+        const r = await fetch(JSONBIN_LATEST, { cache: "no-store" });
+        if (!r.ok) throw new Error(r.status);
+        const w = await r.json();
+        const d = w?.record || w;
+        if (!d) return;
+        if (d.version !== lastVersion) {
+          lastVersion = d.version;
+          applyPayload(d);
+        }
+      } catch (e) {
+        console.error("[overlay] JSONBin error:", e);
       }
-    });
+    }
+    function initJSON() {
+      tickJSON();
+      setInterval(tickJSON, 3000); // adjust to 5000 if you prefer
+    }
+
+    // Boot
+    USE_JSONBIN ? initJSON() : initLocal();
   </script>
 </body>
 </html>
