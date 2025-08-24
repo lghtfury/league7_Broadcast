@@ -62,6 +62,9 @@
 
   .status{font-size:12px; color:#9fb0d8}
   .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+
+  /* Hide the old JSONBin box to avoid confusion */
+  .jsonbin { display:none; }
 </style>
 </head>
 <body>
@@ -71,7 +74,6 @@
       <div class="match-head">
         <div>
           <label>Match ID</label>
-          <!-- NEW: dropdown populated from Google Sheet -->
           <select id="matchId">
             <option value="">Loading…</option>
           </select>
@@ -161,10 +163,10 @@
         <div class="grow"></div>
         <span id="status" class="status">Idle</span>
       </div>
-      <div class="tiny" style="margin-top:6px">“Push to Overlay” updates your JSONBin; the overlay polls it every few seconds.</div>
+      <div class="tiny" style="margin-top:6px">“Push to Overlay” writes to Firestore; the overlay listens live.</div>
     </div>
 
-    <!-- RIGHT: Preview + JSONBin section -->
+    <!-- RIGHT: Preview + (old JSONBin box hidden) -->
     <div class="card">
       <h2>Border Preview (matches overlay)</h2>
       <div class="preview" id="preview">
@@ -175,27 +177,27 @@
         Preview
       </div>
 
-      <h2 style="margin-top:16px">JSONBin Settings</h2>
-      <div class="row">
-        <div>
-          <label>Bin ID</label>
-          <input id="binId" type="text" placeholder="YOUR_BIN_ID" />
+      <div class="card jsonbin" style="margin-top:16px">
+        <h2>JSONBin Settings</h2>
+        <div class="row">
+          <div>
+            <label>Bin ID</label>
+            <input id="binId" type="text" placeholder="YOUR_BIN_ID" />
+          </div>
+          <div>
+            <label>X‑Master‑Key</label>
+            <input id="masterKey" type="password" placeholder="••••••••••••" />
+            <label class="tiny"><input id="rememberKey" type="checkbox"> Remember key on this device</label>
+          </div>
         </div>
-        <div>
-          <label>X‑Master‑Key</label>
-          <input id="masterKey" type="password" placeholder="••••••••••••" />
-          <label class="tiny"><input id="rememberKey" type="checkbox"> Remember key on this device</label>
+        <div class="stack" style="margin-top:10px">
+          <button id="btnTest" class="btn">Test Read</button>
+          <div class="grow"></div>
+          <span id="binStatus" class="status">Bin idle</span>
         </div>
+        <h2 style="margin-top:14px">Latest from Bin</h2>
+        <pre id="lastJson">(none)</pre>
       </div>
-
-      <div class="stack" style="margin-top:10px">
-        <button id="btnTest" class="btn">Test Read</button>
-        <div class="grow"></div>
-        <span id="binStatus" class="status">Bin idle</span>
-      </div>
-
-      <h2 style="margin-top:14px">Latest from Bin</h2>
-      <pre id="lastJson">(none)</pre>
     </div>
   </div>
 
@@ -219,20 +221,18 @@ function loadPanelCfg(){
 }
 function savePanelCfg(){
   const cfg = {
-    bin: $('#binId').value.trim(),
-    rememberKey: $('#rememberKey').checked,
-    masterKey: $('#rememberKey').checked ? $('#masterKey').value : ''
+    bin: $('#binId')?.value?.trim?.() || '',
+    rememberKey: $('#rememberKey')?.checked || false,
+    masterKey: ($('#rememberKey')?.checked ? $('#masterKey')?.value : '') || ''
   };
   localStorage.setItem(LS_PANEL, JSON.stringify(cfg));
 }
 
 /* ========== CSV helpers (uses Google Sheets "output=csv") ========== */
-// NEW: endpoints using output=csv for easy parsing
 const MATCHES_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=834810832&single=true&output=csv";
 const TEAMS_CSV   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=495267531&single=true&output=csv";
 
 function parseCSV(text){
-  // tiny CSV parser that handles quoted commas/newlines
   const rows=[]; let cur=[''], i=0, s=text, inQ=false;
   for(let c of s){
     if(c === '"'){ inQ = !inQ; cur[i]+=c; }
@@ -270,12 +270,11 @@ function wireColor(id){
     renderPreview();
   };
   pick.addEventListener('input', update);
-  update(); // init
+  update();
 }
 ['A1','A2','B1','B2'].forEach(wireColor);
 
 /* ========== score buttons (+10, +30) ========== */
-// NEW: +10/-10 and +30
 const clamp0 = n => Math.max(0, n|0);
 function addScore(id, delta){
   const el = $(id);
@@ -321,6 +320,7 @@ function setStatus(msg, kind){
 }
 function setBinStatus(msg, kind){
   const el = $('#binStatus');
+  if(!el) return;
   el.textContent = msg;
   el.classList.remove('ok','warn','err');
   if (kind) el.classList.add(kind);
@@ -344,37 +344,12 @@ $('#btnLoad').onclick = ()=>{
   setStatus(`Loaded ${id}`, 'ok');
 };
 
-/* ========== JSONBin push/read (unchanged) ========== */
+/* (Old JSONBin helpers left in but UI is hidden) */
 const urlLatest = bin => `https://api.jsonbin.io/v3/b/${bin}/latest`;
 const urlWrite  = bin => `https://api.jsonbin.io/v3/b/${bin}`;
-
-$('#btnPush').onclick = async ()=>{
-  savePanelCfg();
-  const bin = $('#binId').value.trim();
-  const key = $('#masterKey').value.trim();
-  if (!bin) return setStatus('Set Bin ID', 'warn');
-  if (!key) return setStatus('Set X‑Master‑Key', 'warn');
-
-  const payload = collectPayload();
-  try{
-    setStatus('Pushing…');
-    const r = await fetch(urlWrite(bin), {
-      method:'PUT',
-      headers:{ 'Content-Type':'application/json', 'X-Master-Key': key },
-      body: JSON.stringify(payload)
-    });
-    if(!r.ok) throw new Error(`${r.status} ${await r.text().catch(()=> '')}`);
-    setStatus('Pushed ✔', 'ok');
-    await doRead(); // show what's actually in the bin
-  }catch(e){
-    console.error('Push failed:', e);
-    setStatus('Push failed', 'err');
-  }
-};
-
 async function doRead(){
   savePanelCfg();
-  const bin = $('#binId').value.trim();
+  const bin = $('#binId')?.value?.trim?.();
   if (!bin) return setBinStatus('Set Bin ID','warn');
   try{
     setBinStatus('Reading…');
@@ -388,35 +363,28 @@ async function doRead(){
     setBinStatus('Read failed','err');
   }
 }
-$('#btnTest').onclick = doRead;
+$('#btnTest')?.addEventListener('click', doRead);
 
 /* ========== Google Sheets wiring ========== */
-// NEW: caches
 let MATCH_ROWS = []; // [{id, teamA, teamB}]
 let TEAM_COLORS = new Map(); // name -> {primary, secondary}
 
-// load teams (for hex lookups)
 async function loadTeamColors(){
   const txt = await (await fetch(TEAMS_CSV, {cache:'no-store'})).text();
   const rows = parseCSV(txt);
-  // rows[0] is header; data starts row 2 per your sheet
   for(let i=1;i<rows.length;i++){
-    const [teamName,,,primary,secondary] = [rows[i][0], rows[i][1], rows[i][2], rows[i][2], rows[i][3]];
     const name = rows[i][0]?.trim();
     const pri  = rows[i][2]?.trim();
     const sec  = rows[i][3]?.trim();
     if(!name) continue;
-    if(/^#?[0-9a-f]{6}$/i.test(pri) && !pri.startsWith('#')) MATCH_ROWS; // noop, just to keep linter quiet
     const fix = h => h ? (h.startsWith('#') ? h : '#'+h) : '';
     TEAM_COLORS.set(name, { primary: fix(pri), secondary: fix(sec) });
   }
 }
 
-// load matches (id in D, teams in E/F, starting Row 3)
 async function loadMatches(){
   const txt = await (await fetch(MATCHES_CSV, {cache:'no-store'})).text();
   const rows = parseCSV(txt);
-  // header is at row 2; actual data from row 3 => index 2
   MATCH_ROWS = [];
   for(let i=2;i<rows.length;i++){
     const row = rows[i];
@@ -425,12 +393,10 @@ async function loadMatches(){
     const teamB = (row[5]||'').trim();   // Column F
     if(id) MATCH_ROWS.push({id, teamA, teamB});
   }
-  // populate dropdown
   const sel = $('#matchId');
   sel.innerHTML = `<option value="">Select…</option>` + MATCH_ROWS.map(m=>`<option value="${m.id}">${m.id}</option>`).join('');
 }
 
-// when you change the Match ID, set names and colors
 function onMatchPicked(){
   const id = $('#matchId').value.trim();
   if(!id) return;
@@ -440,7 +406,6 @@ function onMatchPicked(){
   $('#teamAName').value = m.teamA || 'Team A';
   $('#teamBName').value = m.teamB || 'Team B';
 
-  // lookup hexes by team name
   const A = TEAM_COLORS.get(m.teamA) || {};
   const B = TEAM_COLORS.get(m.teamB) || {};
 
@@ -452,7 +417,6 @@ function onMatchPicked(){
   setStatus(`Loaded from sheet: ${id}`, 'ok');
 }
 
-/* ========== boot ========== */
 async function boot(){
   loadPanelCfg();
   renderPreview();
@@ -466,6 +430,45 @@ async function boot(){
   }
 }
 boot();
+</script>
+
+<!-- ========== FIREBASE real-time push (panel → overlay) ========== -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+
+/* ✅ Your Firebase config */
+const firebaseConfig = {
+  apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
+  authDomain: "league7overlay.firebaseapp.com",
+  projectId: "league7overlay",
+  storageBucket: "league7overlay.firebasestorage.app",
+  messagingSenderId: "126648845416",
+  appId: "1:126648845416:web:06be2078b0c95bbb97a7dd",
+  measurementId: "G-QW2NG2BNF9"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+const auth = getAuth(app);
+await signInAnonymously(auth);
+
+// Choose overlay namespace via ?overlay=… (default "main")
+const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || "main";
+
+// Push to Firestore on click
+document.getElementById("btnPush").addEventListener("click", async () => {
+  const payload = window.collectPayload();
+  try {
+    window.setStatus("Pushing…");
+    await setDoc(doc(db, "overlays", OVERLAY_ID), payload, { merge: true });
+    window.setStatus("Pushed ✔", "ok");
+  } catch (e) {
+    console.error(e);
+    window.setStatus("Push failed", "err");
+  }
+});
 </script>
 </body>
 </html>
