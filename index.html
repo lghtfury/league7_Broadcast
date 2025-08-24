@@ -5,7 +5,7 @@
   <title>League 7 In-Game Overlay</title>
   <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
   <style>
-    /* Keep transparency */
+    /* ---------- Base ---------- */
     html, body {
       margin: 0;
       padding: 0;
@@ -15,17 +15,22 @@
       font-family: 'IM Fell English SC', serif;
     }
 
+    :root{
+      /* frame thickness and color fallbacks */
+      --frame: 15px;
+      --A1:#555; --A2:#333; /* Team A primary/secondary */
+      --B1:#333; --B2:#111; /* Team B primary/secondary */
+    }
+
     #overlay {
       position: relative;
       width: 1920px;
       height: 1080px;
       box-sizing: border-box;
-      border: 15px solid; /* gradient set by JS from team colors */
-      border-image: linear-gradient(135deg, #444, #222) 1;
       background: transparent !important;
     }
 
-    /* Background image */
+    /* Background frame art (if you use one) */
     #background {
       position: absolute;
       inset: 0;
@@ -36,17 +41,26 @@
       z-index: 0;
     }
 
-    /* Optional color wash */
-    #colorWash {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 1; 
-      opacity: 0.18; 
-      background: transparent;
-    }
+    /* ---------- Gradient frame (no wash, border only) ---------- */
+    #frame, #frame .edge { position: absolute; pointer-events: none; }
+    #frame { inset: 0; z-index: 1; }
 
-    /* Team names */
+    .edge { background: transparent; }
+
+    .edge.top    { left: 0; right: 0; top: 0; height: var(--frame); }
+    .edge.bottom { left: 0; right: 0; bottom: 0; height: var(--frame); }
+    .edge.left   { left: 0; top: 0; bottom: 0; width: var(--frame); }
+    .edge.right  { right: 0; top: 0; bottom: 0; width: var(--frame); }
+
+    /* Left/right use each team’s two tones (vertical fade) */
+    .edge.left  { background: linear-gradient(to bottom, var(--A1), var(--A2)); }
+    .edge.right { background: linear-gradient(to bottom, var(--B1), var(--B2)); }
+
+    /* Top/bottom blend A→B; swap or change to taste */
+    .edge.top    { background: linear-gradient(to right, var(--A1), var(--B1)); }
+    .edge.bottom { background: linear-gradient(to right, var(--A2), var(--B2)); }
+
+    /* ---------- UI: team names & scores ---------- */
     #teamA, #teamB {
       position: absolute;
       top: 35px;
@@ -62,7 +76,6 @@
     #teamA { left: 390px; }
     #teamB { left: 1074px; }
 
-    /* Scores */
     #scoreA, #scoreB {
       position: absolute;
       color: black;
@@ -77,11 +90,16 @@
 </head>
 <body>
   <div id="overlay">
-    <!-- Background frame -->
+    <!-- Optional background art (non-tint) -->
     <img id="background" src="overlay.png" alt="Overlay background" />
 
-    <!-- Optional tint -->
-    <div id="colorWash" aria-hidden="true"></div>
+    <!-- Gradient border only -->
+    <div id="frame" aria-hidden="true">
+      <div class="edge top"></div>
+      <div class="edge right"></div>
+      <div class="edge bottom"></div>
+      <div class="edge left"></div>
+    </div>
 
     <!-- Team names and scores -->
     <div id="teamA">Team A</div>
@@ -101,26 +119,28 @@
       const v = String(hex || "").trim();
       return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : fallback;
     }
+
     function adjustFontSize(id) {
       const el = document.getElementById(id);
       const length = (el.textContent || "").trim().length;
-      el.style.fontSize = length > 20 ? "24px" : length > 16 ? "26px" : length > 12 ? "30px" : "36px";
+      el.style.fontSize =
+        length > 20 ? "24px" :
+        length > 16 ? "26px" :
+        length > 12 ? "30px" : "36px";
     }
 
-    // NEW: 4-stop gradient (A.primary -> A.secondary -> B.primary -> B.secondary)
+    // Set CSS variables used by the border strips
     function setBorderGradient(a1, a2, b1, b2) {
       const A1 = safeColor(a1, "#555");
       const A2 = safeColor(a2, "#333");
       const B1 = safeColor(b1, "#333");
       const B2 = safeColor(b2, "#111");
 
-      // Border
-      document.getElementById("overlay").style.borderImage =
-        `linear-gradient(135deg, ${A1} 0%, ${A2} 45%, ${B1} 55%, ${B2} 100%) 1`;
-
-      // Per-side wash (left A1->A2, right B1->B2)
-      document.getElementById("colorWash").style.background =
-        `linear-gradient(to right, ${A1} 0%, ${A2} 50%, ${B1} 50%, ${B2} 100%)`;
+      const root = document.documentElement;
+      root.style.setProperty("--A1", A1);
+      root.style.setProperty("--A2", A2);
+      root.style.setProperty("--B1", B1);
+      root.style.setProperty("--B2", B2);
     }
 
     function applyPayload(data) {
@@ -177,7 +197,7 @@
     }
     function initJSON() {
       tickJSON();
-      setInterval(tickJSON, 3000); // adjust to 5000 if you prefer
+      setInterval(tickJSON, 3000);
     }
 
     // Boot
