@@ -1,123 +1,205 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>League 7 Control Panel</title>
+  <meta charset="UTF-8" />
+  <title>League 7 In-Game Overlay</title>
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; background:#111; color:#fff; padding:20px; }
-    h1 { color:#ffd700; }
-    input, button { padding:6px; margin:5px; font-size:16px; }
-    #matchInfo { margin-top:20px; padding:15px; background:#222; border:1px solid #444; border-radius:10px; }
-    .debug { font-size:12px; color:#ccc; margin-top:10px; white-space:pre-wrap; }
-    .pill { display:inline-block; padding:2px 6px; border-radius:8px; background:#333; font-size:12px; margin-left:6px; }
+    /* ---------- Base ---------- */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%; height: 100%;
+      background: transparent !important;
+      overflow: hidden;
+      font-family: 'IM Fell English SC', serif;
+    }
+
+    :root{
+      /* frame thickness and color fallbacks */
+      --frame: 15px;
+      --A1:#555; --A2:#333; /* Team A primary/secondary */
+      --B1:#333; --B2:#111; /* Team B primary/secondary */
+    }
+
+    #overlay {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      box-sizing: border-box;
+      background: transparent !important;
+    }
+
+    /* Background art if you use one */
+    #background {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ---------- Gradient frame (no wash, border only) ---------- */
+    #frame, #frame .edge { position: absolute; pointer-events: none; }
+    #frame { inset: 0; z-index: 1; }
+
+    .edge { background: transparent; }
+
+    .edge.top    { left: 0; right: 0; top: 0; height: var(--frame); }
+    .edge.bottom { left: 0; right: 0; bottom: 0; height: var(--frame); }
+    .edge.left   { left: 0; top: 0; bottom: 0; width: var(--frame); }
+    .edge.right  { right: 0; top: 0; bottom: 0; width: var(--frame); }
+
+    /* Left/right use each team’s two tones (vertical fades) */
+    .edge.left  { background: linear-gradient(to bottom, var(--A1), var(--A2)); }
+    .edge.right { background: linear-gradient(to bottom, var(--B1), var(--B2)); }
+
+    /* Top/bottom blend A→B; tweak if you want different behavior */
+    .edge.top    { background: linear-gradient(to right, var(--A1), var(--B1)); }
+    .edge.bottom { background: linear-gradient(to right, var(--A2), var(--B2)); }
+
+    /* ---------- UI: team names & scores ---------- */
+    #teamA, #teamB {
+      position: absolute;
+      top: 35px;
+      color: white;
+      font-weight: bold;
+      font-size: 36px;
+      z-index: 3;
+      white-space: nowrap;
+      max-width: 540px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #teamA { left: 390px; }
+    #teamB { left: 1074px; }
+
+    #scoreA, #scoreB {
+      position: absolute;
+      color: black;
+      font-size: 56px;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px #000;
+      z-index: 3;
+    }
+    #scoreA { top: 87px; left: 595px; transform: translateX(-50%); }
+    #scoreB { top: 86px; right: 595px; transform: translateX(50%); }
   </style>
 </head>
 <body>
-  <h1>🎮 League 7 Control Panel</h1>
+  <div id="overlay">
+    <!-- Optional background art -->
+    <img id="background" src="overlay.png" alt="Overlay background" />
 
-  <label>Match ID: <input type="number" id="matchIdInput" placeholder="e.g. 1"></label>
-  <button id="btnLoad">Load Match</button>
+    <!-- Gradient border only -->
+    <div id="frame" aria-hidden="true">
+      <div class="edge top"></div>
+      <div class="edge right"></div>
+      <div class="edge bottom"></div>
+      <div class="edge left"></div>
+    </div>
 
-  <div id="matchInfo">
-    <h2>Match Preview</h2>
-    <p><strong>Division:</strong> <span id="division">-</span></p>
-    <p><strong>Team A:</strong> <span id="teamAName">-</span><span id="teamATag" class="pill">-</span></p>
-    <p><strong>Team B:</strong> <span id="teamBName">-</span><span id="teamBTag" class="pill">-</span></p>
-    <p><strong>Series Score (sheet):</strong> <span id="series">-</span></p>
+    <!-- Team names and scores -->
+    <div id="teamA">Team A</div>
+    <div id="teamB">Team B</div>
+    <div id="scoreA">0</div>
+    <div id="scoreB">0</div>
   </div>
-
-  <div style="margin-top:18px; padding:12px; background:#1a1a1a; border:1px solid #333; border-radius:10px;">
-    <h3>Live Score (override)</h3>
-    <label>Score A: <input id="mapScoreA" type="number" value="0" style="width:64px;"></label>
-    <label>Score B: <input id="mapScoreB" type="number" value="0" style="width:64px;"></label>
-    <button id="btnPush">🚀 Push to Overlay</button>
-  </div>
-
-  <div class="debug" id="debug"></div>
 
   <script>
-    const MATCH_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=834810832&single=true&output=csv";
-    const TEAMS_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=495267531&single=true&output=csv";
+    /* ========= Cloud polling ON ========= */
+    const USE_JSONBIN = true;
+    const JSONBIN_LATEST = "https://api.jsonbin.io/v3/b/YOUR_BIN_ID/latest"; // <-- set your bin ID
 
-    const COL = { DIVISION:2, MATCH_ID:3, TEAM_A:4, TEAM_B:5, SERIES_A:18, SERIES_B:19 };
-    const HEADER_ROW_INDEX = 1;
-    const norm = s => String(s||"").trim();
-
-    function parseCSV(text){
-      return text.split("\n").map(r => r.split(",").map(x=>x.trim()));
+    function safeColor(hex, fallback = "#222") {
+      const v = String(hex || "").trim();
+      return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : fallback;
     }
 
-    let BY_TAG=new Map(), BY_NAME=new Map();
-    async function loadTeams(){
-      const res = await fetch(TEAMS_CSV,{cache:"no-store"});
-      const raw = parseCSV(await res.text());
-      const headers=raw[0];
-      const data=raw.slice(1).filter(r=>r.some(x=>x));
-      BY_TAG.clear(); BY_NAME.clear();
-      for(const r of data){
-        const row={}; headers.forEach((h,i)=>row[h]=(r[i]||"").trim());
-        if(row.TeamTag) BY_TAG.set(row.TeamTag.toLowerCase(), row);
-        if(row.TeamName) BY_NAME.set(row.TeamName.toLowerCase(), row);
+    function adjustFontSize(id) {
+      const el = document.getElementById(id);
+      const length = (el.textContent || "").trim().length;
+      el.style.fontSize =
+        length > 20 ? "24px" :
+        length > 16 ? "26px" :
+        length > 12 ? "30px" : "36px";
+    }
+
+    // Set CSS variables used by the border strips
+    function setBorderGradient(a1, a2, b1, b2) {
+      const A1 = safeColor(a1, "#555");
+      const A2 = safeColor(a2, "#333");
+      const B1 = safeColor(b1, "#333");
+      const B2 = safeColor(b2, "#111");
+
+      const root = document.documentElement;
+      root.style.setProperty("--A1", A1);
+      root.style.setProperty("--A2", A2);
+      root.style.setProperty("--B1", B1);
+      root.style.setProperty("--B2", B2);
+    }
+
+    function applyPayload(data) {
+      if (!data) return;
+
+      document.getElementById("teamA").textContent = data.teamAName || data.teamA || "Team A";
+      document.getElementById("teamB").textContent = data.teamBName || data.teamB || "Team B";
+      adjustFontSize("teamA");
+      adjustFontSize("teamB");
+
+      document.getElementById("scoreA").textContent = data.mapScoreA ?? 0;
+      document.getElementById("scoreB").textContent = data.mapScoreB ?? 0;
+
+      setBorderGradient(
+        data?.teamAColors?.primary,
+        data?.teamAColors?.secondary,
+        data?.teamBColors?.primary,
+        data?.teamBColors?.secondary
+      );
+    }
+
+    // ----- LOCAL MODE (not used here, but kept for dev) -----
+    function initLocal() {
+      try {
+        const initial = JSON.parse(
+          localStorage.getItem("matchData_ingame") ||
+          localStorage.getItem("matchData") || "{}"
+        );
+        if (Object.keys(initial).length) applyPayload(initial);
+      } catch (_) {}
+      window.addEventListener("storage", (e) => {
+        if (e.key === "matchData_ingame" || e.key === "matchData") {
+          try { applyPayload(JSON.parse(e.newValue || "{}")); } catch (_) {}
+        }
+      });
+    }
+
+    // ----- JSONBIN MODE (cross‑app sync) -----
+    let lastVersion = null;
+    async function tickJSON() {
+      try {
+        const r = await fetch(JSONBIN_LATEST, { cache: "no-store" });
+        if (!r.ok) throw new Error(r.status);
+        const w = await r.json();
+        const d = w?.record || w;
+        if (!d) return;
+        if (d.version !== lastVersion) {
+          lastVersion = d.version;
+          applyPayload(d);
+        }
+      } catch (e) {
+        console.error("[overlay] JSONBin error:", e);
       }
     }
-    function resolveTeam(q){
-      if(!q) return null;
-      return BY_TAG.get(q.toLowerCase())||BY_NAME.get(q.toLowerCase())||null;
+    function initJSON() {
+      tickJSON();
+      setInterval(tickJSON, 3000); // adjust interval if needed
     }
 
-    async function getMatchRow(matchId){
-      const res = await fetch(MATCH_CSV,{cache:"no-store"});
-      const rows = parseCSV(await res.text());
-      return rows.slice(HEADER_ROW_INDEX+1).find(r=>norm(r[COL.MATCH_ID])===String(matchId));
-    }
-
-    let lastPayload=null;
-
-    async function loadMatchData(){
-      const matchId = norm(document.getElementById("matchIdInput").value);
-      if(!matchId){alert("Enter Match ID");return;}
-      if(BY_TAG.size===0) await loadTeams();
-      const row = await getMatchRow(matchId);
-      if(!row){document.getElementById("debug").textContent=`Match ${matchId} not found`;return;}
-      const division=norm(row[COL.DIVISION]);
-      const teamA_in=norm(row[COL.TEAM_A]);
-      const teamB_in=norm(row[COL.TEAM_B]);
-      const seriesA=norm(row[COL.SERIES_A])||"0";
-      const seriesB=norm(row[COL.SERIES_B])||"0";
-      const A=resolveTeam(teamA_in)||{TeamTag:teamA_in,TeamName:teamA_in};
-      const B=resolveTeam(teamB_in)||{TeamTag:teamB_in,TeamName:teamB_in};
-
-      document.getElementById("division").textContent=division;
-      document.getElementById("teamAName").textContent=A.TeamName;
-      document.getElementById("teamBName").textContent=B.TeamName;
-      document.getElementById("teamATag").textContent=A.TeamTag;
-      document.getElementById("teamBTag").textContent=B.TeamTag;
-      document.getElementById("series").textContent=`${seriesA} - ${seriesB}`;
-
-      lastPayload={matchId,division,
-        teamA:A.TeamTag, teamB:B.TeamTag,
-        teamAName:A.TeamName, teamBName:B.TeamName,
-        teamAColors:{primary:A.PrimaryColor||"#444"},
-        teamBColors:{primary:B.PrimaryColor||"#222"},
-        seriesScore:`${seriesA}-${seriesB}`,
-        mapScoreA:Number(document.getElementById("mapScoreA").value)||0,
-        mapScoreB:Number(document.getElementById("mapScoreB").value)||0,
-        version:Date.now()
-      };
-      localStorage.setItem("matchData", JSON.stringify(lastPayload));
-    }
-
-    function pushToOverlay(){
-      if(!lastPayload){loadMatchData();}
-      lastPayload.mapScoreA=Number(document.getElementById("mapScoreA").value)||0;
-      lastPayload.mapScoreB=Number(document.getElementById("mapScoreB").value)||0;
-      lastPayload.version=Date.now();
-      localStorage.setItem("matchData_ingame", JSON.stringify(lastPayload));
-      document.getElementById("debug").textContent=`[PUSH] ${lastPayload.teamA} ${lastPayload.mapScoreA} - ${lastPayload.mapScoreB} ${lastPayload.teamB}`;
-    }
-
-    document.getElementById("btnLoad").onclick=loadMatchData;
-    document.getElementById("btnPush").onclick=pushToOverlay;
+    // Boot
+    USE_JSONBIN ? initJSON() : initLocal();
   </script>
 </body>
 </html>
