@@ -1,205 +1,371 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>League 7 In-Game Overlay</title>
-  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
-  <style>
-    /* ---------- Base ---------- */
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%; height: 100%;
-      background: transparent !important;
-      overflow: hidden;
-      font-family: 'IM Fell English SC', serif;
-    }
+<meta charset="utf-8" />
+<title>League 7 — Control Panel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0b0e; --card:#0e1116; --ink:#0b0c10; --line:#1b2438;
+    --text:#e8ecf6; --muted:#97a0b3; --ok:#3ecf8e; --warn:#ffcf5a; --err:#ff6b6b; --accent:#5aa0ff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
+    background:linear-gradient(180deg,#0a0b0e,#0e1320 55%,#0a0b0e); color:var(--text);
+    padding:24px; display:flex; justify-content:center;
+  }
+  .wrap{width:min(1100px,100%); display:grid; grid-template-columns: 460px 1fr; gap:20px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 12px 28px rgba(0,0,0,.35)}
 
-    :root{
-      /* frame thickness and color fallbacks */
-      --frame: 15px;
-      --A1:#555; --A2:#333; /* Team A primary/secondary */
-      --B1:#333; --B2:#111; /* Team B primary/secondary */
-    }
+  /* Match header (black box) */
+  .match-head{
+    background:#000; border:1px solid #222; border-radius:14px; padding:14px; margin-bottom:12px;
+    display:grid; grid-template-columns: 1fr auto auto; gap:10px; align-items:center;
+  }
+  .match-head input{height:40px}
 
-    #overlay {
-      position: relative;
-      width: 1920px;
-      height: 1080px;
-      box-sizing: border-box;
-      background: transparent !important;
-    }
+  h2{margin:.4rem 0 1rem 0; font-size:18px}
+  label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px}
+  input[type="text"], input[type="number"], input[type="password"]{
+    width:100%; padding:10px 12px; border-radius:10px; border:1px solid #232b4a; background:#0f1422; color:var(--text); outline:none;
+  }
+  .row{display:grid; grid-template-columns: 1fr 1fr; gap:12px}
+  .stack{display:flex; gap:10px; align-items:center}
+  .grow{flex:1}
+  .btn{
+    appearance:none; border:1px solid #2a3350; background:#141a2a; color:var(--text);
+    padding:10px 14px; border-radius:10px; font-weight:600; cursor:pointer;
+  }
+  .btn.primary{background:linear-gradient(180deg,#1e66ff,#1449c0); border:0}
+  .btn.ghost{background:transparent}
+  .tiny{font-size:11px; color:#8d96ac}
 
-    /* Background art if you use one */
-    #background {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      pointer-events: none;
-      z-index: 0;
-    }
+  /* Team blocks */
+  .team-card{background:var(--ink); border:1px solid var(--line); border-radius:12px; padding:12px}
+  .team-row{display:grid; grid-template-columns: 1fr 120px; gap:10px; align-items:end}
+  .swatches{display:flex; gap:8px; align-items:center}
+  .sw{width:22px; height:22px; border-radius:6px; border:2px solid rgba(255,255,255,.9); box-shadow:0 0 6px rgba(0,0,0,.5)}
+  .hex{font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:#b8c4e6}
 
-    /* ---------- Gradient frame (no wash, border only) ---------- */
-    #frame, #frame .edge { position: absolute; pointer-events: none; }
-    #frame { inset: 0; z-index: 1; }
+  /* Right column: preview & bin */
+  .preview{
+    position:relative; height:280px; border-radius:14px; overflow:hidden; background:#0b0f19; user-select:none;
+    display:flex; align-items:center; justify-content:center; color:#9aa9ce;
+  }
+  .edge{position:absolute; pointer-events:none}
+  .edge.top{left:0; right:0; top:0; height:15px}
+  .edge.bottom{left:0; right:0; bottom:0; height:15px}
+  .edge.left{left:0; top:0; bottom:0; width:15px}
+  .edge.right{right:0; top:0; bottom:0; width:15px}
 
-    .edge { background: transparent; }
+  pre{max-height:220px; overflow:auto; background:#0f1422; border:1px solid #1e2540; border-radius:10px; padding:10px; color:#c9d4f4}
 
-    .edge.top    { left: 0; right: 0; top: 0; height: var(--frame); }
-    .edge.bottom { left: 0; right: 0; bottom: 0; height: var(--frame); }
-    .edge.left   { left: 0; top: 0; bottom: 0; width: var(--frame); }
-    .edge.right  { right: 0; top: 0; bottom: 0; width: var(--frame); }
-
-    /* Left/right use each team’s two tones (vertical fades) */
-    .edge.left  { background: linear-gradient(to bottom, var(--A1), var(--A2)); }
-    .edge.right { background: linear-gradient(to bottom, var(--B1), var(--B2)); }
-
-    /* Top/bottom blend A→B; tweak if you want different behavior */
-    .edge.top    { background: linear-gradient(to right, var(--A1), var(--B1)); }
-    .edge.bottom { background: linear-gradient(to right, var(--A2), var(--B2)); }
-
-    /* ---------- UI: team names & scores ---------- */
-    #teamA, #teamB {
-      position: absolute;
-      top: 35px;
-      color: white;
-      font-weight: bold;
-      font-size: 36px;
-      z-index: 3;
-      white-space: nowrap;
-      max-width: 540px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    #teamA { left: 390px; }
-    #teamB { left: 1074px; }
-
-    #scoreA, #scoreB {
-      position: absolute;
-      color: black;
-      font-size: 56px;
-      font-weight: bold;
-      text-shadow: 2px 2px 4px #000;
-      z-index: 3;
-    }
-    #scoreA { top: 87px; left: 595px; transform: translateX(-50%); }
-    #scoreB { top: 86px; right: 595px; transform: translateX(50%); }
-  </style>
+  .status{font-size:12px; color:#9fb0d8}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+</style>
 </head>
 <body>
-  <div id="overlay">
-    <!-- Optional background art -->
-    <img id="background" src="overlay.png" alt="Overlay background" />
+  <div class="wrap">
+    <!-- LEFT: Match header + Teams -->
+    <div class="card">
+      <div class="match-head">
+        <div>
+          <label>Match ID</label>
+          <input id="matchId" type="text" placeholder="e.g. 2025-WK3-M1" />
+        </div>
+        <button id="btnLoad" class="btn">Load Match</button>
+        <button id="btnSave" class="btn ghost">Save Match</button>
+      </div>
 
-    <!-- Gradient border only -->
-    <div id="frame" aria-hidden="true">
-      <div class="edge top"></div>
-      <div class="edge right"></div>
-      <div class="edge bottom"></div>
-      <div class="edge left"></div>
+      <div class="team-card" style="margin-bottom:12px">
+        <h2>Team A</h2>
+        <div class="team-row">
+          <div>
+            <label>Name</label>
+            <input id="teamAName" type="text" placeholder="Team A" />
+          </div>
+          <div>
+            <label>Score A</label>
+            <div class="stack">
+              <button id="btnAminus" class="btn ghost">-</button>
+              <input id="scoreA" type="number" min="0" step="1" value="0" />
+              <button id="btnAplus" class="btn ghost">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <div>
+            <label>Primary Color</label>
+            <div class="stack">
+              <input id="A1picker" type="color" value="#555555" />
+              <span id="A1sw" class="sw"></span>
+              <span id="A1hex" class="hex">#555555</span>
+            </div>
+          </div>
+          <div>
+            <label>Secondary Color</label>
+            <div class="stack">
+              <input id="A2picker" type="color" value="#333333" />
+              <span id="A2sw" class="sw"></span>
+              <span id="A2hex" class="hex">#333333</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="team-card">
+        <h2>Team B</h2>
+        <div class="team-row">
+          <div>
+            <label>Name</label>
+            <input id="teamBName" type="text" placeholder="Team B" />
+          </div>
+          <div>
+            <label>Score B</label>
+            <div class="stack">
+              <button id="btnBminus" class="btn ghost">-</button>
+              <input id="scoreB" type="number" min="0" step="1" value="0" />
+              <button id="btnBplus" class="btn ghost">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <div>
+            <label>Primary Color</label>
+            <div class="stack">
+              <input id="B1picker" type="color" value="#333333" />
+              <span id="B1sw" class="sw"></span>
+              <span id="B1hex" class="hex">#333333</span>
+            </div>
+          </div>
+          <div>
+            <label>Secondary Color</label>
+            <div class="stack">
+              <input id="B2picker" type="color" value="#111111" />
+              <span id="B2sw" class="sw"></span>
+              <span id="B2hex" class="hex">#111111</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack" style="margin-top:14px">
+        <button id="btnPush" class="btn primary">Push to Overlay</button>
+        <div class="grow"></div>
+        <span id="status" class="status">Idle</span>
+      </div>
+      <div class="tiny" style="margin-top:6px">“Push to Overlay” updates your JSONBin; the overlay polls it every few seconds.</div>
     </div>
 
-    <!-- Team names and scores -->
-    <div id="teamA">Team A</div>
-    <div id="teamB">Team B</div>
-    <div id="scoreA">0</div>
-    <div id="scoreB">0</div>
+    <!-- RIGHT: Preview + JSONBin section -->
+    <div class="card">
+      <h2>Border Preview (matches overlay)</h2>
+      <div class="preview" id="preview">
+        <div class="edge top"   id="pvTop"></div>
+        <div class="edge right" id="pvRight"></div>
+        <div class="edge bottom"id="pvBottom"></div>
+        <div class="edge left"  id="pvLeft"></div>
+        Preview
+      </div>
+
+      <h2 style="margin-top:16px">JSONBin Settings</h2>
+      <div class="row">
+        <div>
+          <label>Bin ID</label>
+          <input id="binId" type="text" placeholder="YOUR_BIN_ID" />
+        </div>
+        <div>
+          <label>X‑Master‑Key</label>
+          <input id="masterKey" type="password" placeholder="••••••••••••" />
+          <label class="tiny"><input id="rememberKey" type="checkbox"> Remember key on this device</label>
+        </div>
+      </div>
+
+      <div class="stack" style="margin-top:10px">
+        <button id="btnTest" class="btn">Test Read</button>
+        <div class="grow"></div>
+        <span id="binStatus" class="status">Bin idle</span>
+      </div>
+
+      <h2 style="margin-top:14px">Latest from Bin</h2>
+      <pre id="lastJson">(none)</pre>
+    </div>
   </div>
 
-  <script>
-    /* ========= Cloud polling ON ========= */
-    const USE_JSONBIN = true;
-    const JSONBIN_LATEST = "https://api.jsonbin.io/v3/b/YOUR_BIN_ID/latest"; // <-- set your bin ID
+<script>
+/* ========== helpers & state ========== */
+const $ = s => document.querySelector(s);
+const hexOK = v => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v||'').trim());
+const safeHex = (v,f) => hexOK(v) ? String(v).trim() : f;
 
-    function safeColor(hex, fallback = "#222") {
-      const v = String(hex || "").trim();
-      return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : fallback;
-    }
+const LS_MATCHES = 'l7_matches_v1';   // a dictionary of { matchId: payload }
+const LS_PANEL   = 'l7_panel_cfg_v1'; // bin/key + rememberKey
 
-    function adjustFontSize(id) {
-      const el = document.getElementById(id);
-      const length = (el.textContent || "").trim().length;
-      el.style.fontSize =
-        length > 20 ? "24px" :
-        length > 16 ? "26px" :
-        length > 12 ? "30px" : "36px";
-    }
+function getMatches(){ try{ return JSON.parse(localStorage.getItem(LS_MATCHES) || '{}'); }catch{ return {}; } }
+function setMatches(obj){ localStorage.setItem(LS_MATCHES, JSON.stringify(obj||{})); }
+function loadPanelCfg(){
+  try{
+    const s = JSON.parse(localStorage.getItem(LS_PANEL) || '{}');
+    $('#binId').value = s.bin || '';
+    $('#rememberKey').checked = !!s.rememberKey;
+    $('#masterKey').value = s.rememberKey ? (s.masterKey || '') : '';
+  }catch{}
+}
+function savePanelCfg(){
+  const cfg = {
+    bin: $('#binId').value.trim(),
+    rememberKey: $('#rememberKey').checked,
+    masterKey: $('#rememberKey').checked ? $('#masterKey').value : ''
+  };
+  localStorage.setItem(LS_PANEL, JSON.stringify(cfg));
+}
 
-    // Set CSS variables used by the border strips
-    function setBorderGradient(a1, a2, b1, b2) {
-      const A1 = safeColor(a1, "#555");
-      const A2 = safeColor(a2, "#333");
-      const B1 = safeColor(b1, "#333");
-      const B2 = safeColor(b2, "#111");
+/* ========== preview (mirrors overlay) ========== */
+function renderPreview(){
+  const A1 = $('#A1hex').textContent.trim();
+  const A2 = $('#A2hex').textContent.trim();
+  const B1 = $('#B1hex').textContent.trim();
+  const B2 = $('#B2hex').textContent.trim();
+  $('#pvLeft').style.background   = `linear-gradient(to bottom, ${A1}, ${A2})`;
+  $('#pvRight').style.background  = `linear-gradient(to bottom, ${B1}, ${B2})`;
+  $('#pvTop').style.background    = `linear-gradient(to right, ${A1}, ${B1})`;
+  $('#pvBottom').style.background = `linear-gradient(to right, ${A2}, ${B2})`;
+}
 
-      const root = document.documentElement;
-      root.style.setProperty("--A1", A1);
-      root.style.setProperty("--A2", A2);
-      root.style.setProperty("--B1", B1);
-      root.style.setProperty("--B2", B2);
-    }
+/* ========== wire color pickers to swatches/hex text ========== */
+function wireColor(id){
+  const pick = $('#'+id+'picker');
+  const sw   = $('#'+id+'sw');
+  const hex  = $('#'+id+'hex');
+  const update = () => {
+    const val = pick.value;
+    sw.style.background = val;
+    hex.textContent = val.toUpperCase();
+    renderPreview();
+  };
+  pick.addEventListener('input', update);
+  update(); // init
+}
+['A1','A2','B1','B2'].forEach(wireColor);
 
-    function applyPayload(data) {
-      if (!data) return;
+/* ========== score +/- ========== */
+$('#btnAplus').onclick  = ()=> $('#scoreA').value = (+$('#scoreA').value||0) + 1;
+$('#btnAminus').onclick = ()=> $('#scoreA').value = Math.max(0,(+$('#scoreA').value||0) - 1);
+$('#btnBplus').onclick  = ()=> $('#scoreB').value = (+$('#scoreB').value||0) + 1;
+$('#btnBminus').onclick = ()=> $('#scoreB').value = Math.max(0,(+$('#scoreB').value||0) - 1);
 
-      document.getElementById("teamA").textContent = data.teamAName || data.teamA || "Team A";
-      document.getElementById("teamB").textContent = data.teamBName || data.teamB || "Team B";
-      adjustFontSize("teamA");
-      adjustFontSize("teamB");
+/* ========== Save/Load Match (local, by matchId) ========== */
+function collectPayload(){
+  return {
+    teamAName: $('#teamAName').value || 'Team A',
+    teamBName: $('#teamBName').value || 'Team B',
+    mapScoreA: Number($('#scoreA').value) || 0,
+    mapScoreB: Number($('#scoreB').value) || 0,
+    teamAColors: { primary: $('#A1hex').textContent.trim(), secondary: $('#A2hex').textContent.trim() },
+    teamBColors: { primary: $('#B1hex').textContent.trim(), secondary: $('#B2hex').textContent.trim() },
+    version: Date.now()
+  };
+}
+function fillFromPayload(p){
+  $('#teamAName').value = p.teamAName || 'Team A';
+  $('#teamBName').value = p.teamBName || 'Team B';
+  $('#scoreA').value = p.mapScoreA ?? 0;
+  $('#scoreB').value = p.mapScoreB ?? 0;
 
-      document.getElementById("scoreA").textContent = data.mapScoreA ?? 0;
-      document.getElementById("scoreB").textContent = data.mapScoreB ?? 0;
+  // set pickers -> swatch/hex will follow via 'input' dispatch
+  if (hexOK(p?.teamAColors?.primary))  { $('#A1picker').value = p.teamAColors.primary;  $('#A1picker').dispatchEvent(new Event('input')); }
+  if (hexOK(p?.teamAColors?.secondary)){ $('#A2picker').value = p.teamAColors.secondary; $('#A2picker').dispatchEvent(new Event('input')); }
+  if (hexOK(p?.teamBColors?.primary))  { $('#B1picker').value = p.teamBColors.primary;  $('#B1picker').dispatchEvent(new Event('input')); }
+  if (hexOK(p?.teamBColors?.secondary)){ $('#B2picker').value = p.teamBColors.secondary; $('#B2picker').dispatchEvent(new Event('input')); }
+  renderPreview();
+}
 
-      setBorderGradient(
-        data?.teamAColors?.primary,
-        data?.teamAColors?.secondary,
-        data?.teamBColors?.primary,
-        data?.teamBColors?.secondary
-      );
-    }
+$('#btnSave').onclick = ()=>{
+  const id = $('#matchId').value.trim();
+  if (!id) return setStatus('Enter a Match ID', 'warn');
+  const matches = getMatches();
+  matches[id] = collectPayload();
+  setMatches(matches);
+  setStatus(`Saved ${id}`, 'ok');
+};
 
-    // ----- LOCAL MODE (not used here, but kept for dev) -----
-    function initLocal() {
-      try {
-        const initial = JSON.parse(
-          localStorage.getItem("matchData_ingame") ||
-          localStorage.getItem("matchData") || "{}"
-        );
-        if (Object.keys(initial).length) applyPayload(initial);
-      } catch (_) {}
-      window.addEventListener("storage", (e) => {
-        if (e.key === "matchData_ingame" || e.key === "matchData") {
-          try { applyPayload(JSON.parse(e.newValue || "{}")); } catch (_) {}
-        }
-      });
-    }
+$('#btnLoad').onclick = ()=>{
+  const id = $('#matchId').value.trim();
+  if (!id) return setStatus('Enter a Match ID', 'warn');
+  const m = getMatches()[id];
+  if (!m){ setStatus(`No saved data for ${id}`, 'warn'); return; }
+  fillFromPayload(m);
+  setStatus(`Loaded ${id}`, 'ok');
+};
 
-    // ----- JSONBIN MODE (cross‑app sync) -----
-    let lastVersion = null;
-    async function tickJSON() {
-      try {
-        const r = await fetch(JSONBIN_LATEST, { cache: "no-store" });
-        if (!r.ok) throw new Error(r.status);
-        const w = await r.json();
-        const d = w?.record || w;
-        if (!d) return;
-        if (d.version !== lastVersion) {
-          lastVersion = d.version;
-          applyPayload(d);
-        }
-      } catch (e) {
-        console.error("[overlay] JSONBin error:", e);
-      }
-    }
-    function initJSON() {
-      tickJSON();
-      setInterval(tickJSON, 3000); // adjust interval if needed
-    }
+/* ========== JSONBin push/read ========== */
+const urlLatest = bin => `https://api.jsonbin.io/v3/b/${bin}/latest`;
+const urlWrite  = bin => `https://api.jsonbin.io/v3/b/${bin}`;
 
-    // Boot
-    USE_JSONBIN ? initJSON() : initLocal();
-  </script>
+function setStatus(msg, kind){
+  const el = $('#status');
+  el.textContent = msg;
+  el.classList.remove('ok','warn','err');
+  if (kind) el.classList.add(kind);
+}
+
+function setBinStatus(msg, kind){
+  const el = $('#binStatus');
+  el.textContent = msg;
+  el.classList.remove('ok','warn','err');
+  if (kind) el.classList.add(kind);
+}
+
+$('#btnPush').onclick = async ()=>{
+  savePanelCfg();
+  const bin = $('#binId').value.trim();
+  const key = $('#masterKey').value.trim();
+  if (!bin) return setStatus('Set Bin ID', 'warn');
+  if (!key) return setStatus('Set X‑Master‑Key', 'warn');
+
+  const payload = collectPayload();
+  try{
+    setStatus('Pushing…');
+    const r = await fetch(urlWrite(bin), {
+      method:'PUT',
+      headers:{ 'Content-Type':'application/json', 'X-Master-Key': key },
+      body: JSON.stringify(payload)
+    });
+    if(!r.ok) throw new Error(`${r.status} ${await r.text().catch(()=> '')}`);
+    setStatus('Pushed ✔', 'ok');
+    await doRead(); // show what's actually in the bin
+  }catch(e){
+    console.error('Push failed:', e);
+    setStatus('Push failed', 'err');
+  }
+};
+
+async function doRead(){
+  savePanelCfg();
+  const bin = $('#binId').value.trim();
+  if (!bin) return setBinStatus('Set Bin ID','warn');
+  try{
+    setBinStatus('Reading…');
+    const r = await fetch(urlLatest(bin), { cache:'no-store' });
+    if(!r.ok) throw new Error(r.status);
+    const data = await r.json();
+    $('#lastJson').textContent = JSON.stringify(data?.record || data, null, 2);
+    setBinStatus('Read OK', 'ok');
+  }catch(e){
+    console.error('Read failed:', e);
+    setBinStatus('Read failed','err');
+  }
+}
+$('#btnTest').onclick = doRead;
+
+/* ========== boot ========== */
+loadPanelCfg();
+renderPreview();
+</script>
 </body>
 </html>
