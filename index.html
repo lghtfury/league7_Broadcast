@@ -109,12 +109,7 @@
   </div>
 
   <script>
-    /* ========= OPTIONAL CLOUD SYNC =========
-       If panel and overlay are in different apps (Chrome vs Streamlabs),
-       localStorage won't sync. Flip USE_JSONBIN to true and set your bin URL. */
-    const USE_JSONBIN = false;
-    const JSONBIN_LATEST = "https://api.jsonbin.io/v3/b/YOUR_BIN_ID/latest"; // set if USE_JSONBIN = true
-
+    /* ---------- Overlay render helpers (unchanged) ---------- */
     function safeColor(hex, fallback = "#222") {
       const v = String(hex || "").trim();
       return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : fallback;
@@ -129,13 +124,11 @@
         length > 12 ? "30px" : "36px";
     }
 
-    // Set CSS variables used by the border strips
     function setBorderGradient(a1, a2, b1, b2) {
       const A1 = safeColor(a1, "#555");
       const A2 = safeColor(a2, "#333");
       const B1 = safeColor(b1, "#333");
       const B2 = safeColor(b2, "#111");
-
       const root = document.documentElement;
       root.style.setProperty("--A1", A1);
       root.style.setProperty("--A2", A2);
@@ -145,15 +138,12 @@
 
     function applyPayload(data) {
       if (!data) return;
-
       document.getElementById("teamA").textContent = data.teamAName || data.teamA || "Team A";
       document.getElementById("teamB").textContent = data.teamBName || data.teamB || "Team B";
       adjustFontSize("teamA");
       adjustFontSize("teamB");
-
       document.getElementById("scoreA").textContent = data.mapScoreA ?? 0;
       document.getElementById("scoreB").textContent = data.mapScoreB ?? 0;
-
       setBorderGradient(
         data?.teamAColors?.primary,
         data?.teamAColors?.secondary,
@@ -161,47 +151,37 @@
         data?.teamBColors?.secondary
       );
     }
+  </script>
 
-    // ----- LOCAL MODE (same-browser testing) -----
-    function initLocal() {
-      try {
-        const initial = JSON.parse(
-          localStorage.getItem("matchData_ingame") ||
-          localStorage.getItem("matchData") || "{}"
-        );
-        if (Object.keys(initial).length) applyPayload(initial);
-      } catch (_) {}
-      window.addEventListener("storage", (e) => {
-        if (e.key === "matchData_ingame" || e.key === "matchData") {
-          try { applyPayload(JSON.parse(e.newValue || "{}")); } catch (_) {}
-        }
-      });
-    }
+  <!-- ---------- Firestore live reader (ONLY) ---------- -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+    import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
-    // ----- JSONBIN MODE (cross-app sync) -----
-    let lastVersion = null;
-    async function tickJSON() {
-      try {
-        const r = await fetch(JSONBIN_LATEST, { cache: "no-store" });
-        if (!r.ok) throw new Error(r.status);
-        const w = await r.json();
-        const d = w?.record || w;
-        if (!d) return;
-        if (d.version !== lastVersion) {
-          lastVersion = d.version;
-          applyPayload(d);
-        }
-      } catch (e) {
-        console.error("[overlay] JSONBin error:", e);
-      }
-    }
-    function initJSON() {
-      tickJSON();
-      setInterval(tickJSON, 3000);
-    }
+    // SAME config you used in panel.html
+    const firebaseConfig = {
+      apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
+      authDomain: "league7overlay.firebaseapp.com",
+      projectId: "league7overlay",
+      storageBucket: "league7overlay.firebasestorage.app",
+      messagingSenderId: "126648845416",
+      appId: "1:126648845416:web:06be2078b0c95bbb97a7dd",
+      measurementId: "G-QW2NG2BNF9"
+    };
 
-    // Boot
-    USE_JSONBIN ? initJSON() : initLocal();
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    // read ?overlay=... (default "main")
+    const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || "main";
+
+    // Live updates from Firestore
+    onSnapshot(doc(db, "overlays", OVERLAY_ID), (snap) => {
+      const data = snap.data();
+      if (!data) return;
+      // call the helper defined above
+      window.applyPayload(data);
+    });
   </script>
 </body>
 </html>
