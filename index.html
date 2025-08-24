@@ -16,9 +16,10 @@
     }
 
     :root{
+      /* frame thickness and color fallbacks */
       --frame: 15px;
-      --A1:#555; --A2:#333; /* Team A colors */
-      --B1:#333; --B2:#111; /* Team B colors */
+      --A1:#555; --A2:#333; /* Team A primary/secondary */
+      --B1:#333; --B2:#111; /* Team B primary/secondary */
     }
 
     #overlay {
@@ -29,72 +30,71 @@
       background: transparent !important;
     }
 
+    /* Background frame art (if you use one) */
     #background {
       position: absolute;
       inset: 0;
-      width: 100%; height: 100%;
+      width: 100%;
+      height: 100%;
       object-fit: cover;
       pointer-events: none;
       z-index: 0;
     }
 
-    /* ---------- Border ---------- */
+    /* ---------- Gradient frame (no wash, border only) ---------- */
     #frame, #frame .edge { position: absolute; pointer-events: none; }
     #frame { inset: 0; z-index: 1; }
+
     .edge { background: transparent; }
+
     .edge.top    { left: 0; right: 0; top: 0; height: var(--frame); }
     .edge.bottom { left: 0; right: 0; bottom: 0; height: var(--frame); }
     .edge.left   { left: 0; top: 0; bottom: 0; width: var(--frame); }
     .edge.right  { right: 0; top: 0; bottom: 0; width: var(--frame); }
-    .edge.left   { background: linear-gradient(to bottom, var(--A1), var(--A2)); }
-    .edge.right  { background: linear-gradient(to bottom, var(--B1), var(--B2)); }
+
+    /* Left/right use each team’s two tones (vertical fade) */
+    .edge.left  { background: linear-gradient(to bottom, var(--A1), var(--A2)); }
+    .edge.right { background: linear-gradient(to bottom, var(--B1), var(--B2)); }
+
+    /* Top/bottom blend A→B; swap or change to taste */
     .edge.top    { background: linear-gradient(to right, var(--A1), var(--B1)); }
     .edge.bottom { background: linear-gradient(to right, var(--A2), var(--B2)); }
 
-    /* ---------- Anchored UI ---------- */
-    #teamA, #teamB, #scoreA, #scoreB {
+    /* ---------- UI: team names & scores ---------- */
+    #teamA, #teamB {
       position: absolute;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      overflow: hidden;
+      top: 35px;
+      color: white;
+      font-weight: bold;
+      font-size: 36px;
+      z-index: 3;
       white-space: nowrap;
+      max-width: 540px;
+      overflow: hidden;
       text-overflow: ellipsis;
+      text-align: center;
+    }
+    #teamA { left: 460px; }
+    #teamB { right: 460px; }
+
+    #scoreA, #scoreB {
+      position: absolute;
+      color: black;
+      font-size: 56px;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px #000;
       z-index: 3;
     }
-
-    /* Measured rectangles */
-    #teamA { /* Blue banner */
-      left: 839px; top: 88px;
-      width: 451px; height: 61px;
-      color: #fff; font-weight: bold;
-      font-size: 36px;
-    }
-    #teamB { /* Red banner */
-      left: 1529px; top: 90px;
-      width: 461px; height: 65px;
-      color: #fff; font-weight: bold;
-      font-size: 36px;
-    }
-    #scoreA { /* Blue score box */
-      left: 698px; top: 134px;
-      width: 192px; height: 43px;
-      color: #000; font-weight: bold;
-      font-size: 56px; text-shadow: 2px 2px 4px #000;
-    }
-    #scoreB { /* Red score box */
-      left: 1420px; top: 139px;
-      width: 199px; height: 48px;
-      color: #000; font-weight: bold;
-      font-size: 56px; text-shadow: 2px 2px 4px #000;
-    }
+    #scoreA { top: 87px; left: 595px; transform: translateX(-50%); }
+    #scoreB { top: 86px; right: 595px; transform: translateX(50%); }
   </style>
 </head>
 <body>
   <div id="overlay">
+    <!-- Optional background art (non-tint) -->
     <img id="background" src="overlay.png" alt="Overlay background" />
 
+    <!-- Gradient border only -->
     <div id="frame" aria-hidden="true">
       <div class="edge top"></div>
       <div class="edge right"></div>
@@ -102,7 +102,7 @@
       <div class="edge left"></div>
     </div>
 
-    <!-- Anchored text -->
+    <!-- Team names and scores -->
     <div id="teamA">Team A</div>
     <div id="teamB">Team B</div>
     <div id="scoreA">0</div>
@@ -110,10 +110,12 @@
   </div>
 
   <script>
+    /* ---------- Overlay render helpers (unchanged) ---------- */
     function safeColor(hex, fallback = "#222") {
       const v = String(hex || "").trim();
       return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : fallback;
     }
+
     function adjustFontSize(id) {
       const el = document.getElementById(id);
       const length = (el.textContent || "").trim().length;
@@ -122,6 +124,7 @@
         length > 16 ? "26px" :
         length > 12 ? "30px" : "36px";
     }
+
     function setBorderGradient(a1, a2, b1, b2) {
       const A1 = safeColor(a1, "#555");
       const A2 = safeColor(a2, "#333");
@@ -133,6 +136,7 @@
       root.style.setProperty("--B1", B1);
       root.style.setProperty("--B2", B2);
     }
+
     function applyPayload(data) {
       if (!data) return;
       document.getElementById("teamA").textContent = data.teamAName || data.teamA || "Team A";
@@ -148,14 +152,14 @@
         data?.teamBColors?.secondary
       );
     }
-    window.applyPayload = applyPayload;
   </script>
 
-  <!-- ---------- Firestore listener ---------- -->
+  <!-- ---------- Firestore live reader (ONLY) ---------- -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
     import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
+    // SAME config you used in panel.html
     const firebaseConfig = {
       apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
       authDomain: "league7overlay.firebaseapp.com",
@@ -169,10 +173,15 @@
     const app = initializeApp(firebaseConfig);
     const db  = getFirestore(app);
 
+    // read ?overlay=... (default "main")
     const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || "main";
+
+    // Live updates from Firestore
     onSnapshot(doc(db, "overlays", OVERLAY_ID), (snap) => {
       const data = snap.data();
-      if (data) window.applyPayload(data);
+      if (!data) return;
+      // call the helper defined above
+      window.applyPayload(data);
     });
   </script>
 </body>
