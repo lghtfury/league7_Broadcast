@@ -30,7 +30,7 @@
       background: transparent !important;
     }
 
-    /* Background art if you use one */
+    /* Optional background art */
     #background {
       position: absolute;
       inset: 0;
@@ -60,8 +60,8 @@
     .edge.top    { background: linear-gradient(to right, var(--A1), var(--B1)); }
     .edge.bottom { background: linear-gradient(to right, var(--A2), var(--B2)); }
 
-    /* ---------- UI: team names & scores ---------- */
-    #teamA, #teamB {
+    /* ---------- Team name + score ---------- */
+    .team {
       position: absolute;
       top: 35px;
       color: white;
@@ -69,13 +69,38 @@
       font-size: 36px;
       z-index: 3;
       white-space: nowrap;
-      max-width: 540px;
+      max-width: 700px; /* room for swatches */
       overflow: hidden;
       text-overflow: ellipsis;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
     }
     #teamA { left: 390px; }
     #teamB { left: 1074px; }
 
+    .team .name {
+      display: inline-block;
+      max-width: 540px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* The two little color boxes next to each team name */
+    .swatches {
+      display: inline-flex;
+      gap: 6px;
+    }
+    .swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 2px solid rgba(255,255,255,0.85);
+      box-shadow: 0 0 4px rgba(0,0,0,0.6);
+      background: transparent;
+    }
+
+    /* Scores */
     #scoreA, #scoreB {
       position: absolute;
       color: black;
@@ -101,9 +126,24 @@
       <div class="edge left"></div>
     </div>
 
-    <!-- Team names and scores -->
-    <div id="teamA">Team A</div>
-    <div id="teamB">Team B</div>
+    <!-- Team names with color boxes -->
+    <div id="teamA" class="team">
+      <span id="teamAName" class="name">Team A</span>
+      <span class="swatches">
+        <span id="A1sw" class="swatch" title="#555555"></span>
+        <span id="A2sw" class="swatch" title="#333333"></span>
+      </span>
+    </div>
+
+    <div id="teamB" class="team">
+      <span id="teamBName" class="name">Team B</span>
+      <span class="swatches">
+        <span id="B1sw" class="swatch" title="#333333"></span>
+        <span id="B2sw" class="swatch" title="#111111"></span>
+      </span>
+    </div>
+
+    <!-- Scores -->
     <div id="scoreA">0</div>
     <div id="scoreB">0</div>
   </div>
@@ -127,7 +167,7 @@
         length > 12 ? "30px" : "36px";
     }
 
-    // Set CSS variables used by the border strips
+    // Update border gradients + the two color boxes beside each team
     function setBorderGradient(a1, a2, b1, b2) {
       const A1 = safeColor(a1, "#555");
       const A2 = safeColor(a2, "#333");
@@ -139,14 +179,24 @@
       root.style.setProperty("--A2", A2);
       root.style.setProperty("--B1", B1);
       root.style.setProperty("--B2", B2);
+
+      // Update the little swatches + tooltips
+      const A1sw = document.getElementById("A1sw");
+      const A2sw = document.getElementById("A2sw");
+      const B1sw = document.getElementById("B1sw");
+      const B2sw = document.getElementById("B2sw");
+      A1sw.style.background = A1; A1sw.title = A1.toUpperCase();
+      A2sw.style.background = A2; A2sw.title = A2.toUpperCase();
+      B1sw.style.background = B1; B1sw.title = B1.toUpperCase();
+      B2sw.style.background = B2; B2sw.title = B2.toUpperCase();
     }
 
     function applyPayload(data) {
       if (!data) return;
 
-      document.getElementById("teamA").textContent = data.teamAName || data.teamA || "Team A";
-      document.getElementById("teamB").textContent = data.teamBName || data.teamB || "Team B";
-      adjustFontSize("teamA");
+      document.getElementById("teamAName").textContent = data.teamAName || data.teamA || "Team A";
+      document.getElementById("teamBName").textContent = data.teamBName || data.teamB || "Team B";
+      adjustFontSize("teamA"); // wrapper is fine for font sizing of text
       adjustFontSize("teamB");
 
       document.getElementById("scoreA").textContent = data.mapScoreA ?? 0;
@@ -160,7 +210,7 @@
       );
     }
 
-    // ----- LOCAL MODE (not used here, but kept for dev) -----
+    // ----- LOCAL MODE (kept for dev) -----
     function initLocal() {
       try {
         const initial = JSON.parse(
