@@ -22,7 +22,7 @@
   .wrap{
     width:min(1100px,100%);
     display:grid;
-    grid-template-columns: 1fr;     /* single column */
+    grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;   /* top = controls, bottom = preview */
     gap:20px;
     height: calc(100vh - 48px);
@@ -42,10 +42,8 @@
   input[type="text"], input[type="number"], input[type="password"], select{
     width:100%; padding:10px 12px; border-radius:10px; border:1px solid #232b4a; background:#0f1422; color:var(--text); outline:none;
   }
-  .row{display:grid; grid-template-columns: 1fr 1fr; gap:12px}
   .stack{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
   .stack.right{justify-content:flex-end}
-  .grow{flex:1}
   .btn{
     appearance:none; border:1px solid #2a3350; background:#141a2a; color:var(--text);
     padding:10px 14px; border-radius:10px; font-weight:600; cursor:pointer;
@@ -56,13 +54,39 @@
   .tiny{font-size:11px; color:#8d96ac}
 
   .team-card{background:var(--ink); border:1px solid var(--line); border-radius:12px; padding:12px}
-  .team-row{display:grid; grid-template-columns: 1fr 1fr; gap:10px; align-items:end}
+
+  /* === New team header layout: name left, colors right === */
+  .team-head{
+    display:grid;
+    grid-template-columns: 1fr auto;
+    gap:16px;
+    align-items:end;
+  }
+  .color-group{
+    display:grid;
+    grid-template-columns: auto auto auto 18px auto auto auto; /* label | picker | sw | gap | hex | picker | sw */
+    gap:8px 10px;
+    align-items:center;
+  }
+  .color-group .lbl{font-size:12px; color:#8fa0c7; margin:0 8px 0 0}
   .sw{width:22px; height:22px; border-radius:6px; border:2px solid rgba(255,255,255,.9); box-shadow:0 0 6px rgba(0,0,0,.5)}
-  .hex{font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:#b8c4e6}
+  .hex{font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:#b8c4e6; min-width:70px}
+  .color-group input[type="color"]{width:38px; height:28px; padding:0; border:0; background:transparent}
+
+  /* Big centered score total + centered buttons */
+  .scoreTotal{
+    text-align:center;
+    font-size:28px;
+    letter-spacing:.5px;
+    margin:12px 0 10px;
+    color:#cfe0ff;
+  }
+  .scoreTotal strong{font-size:34px; color:#e9f1ff}
+  .scoreBtns{justify-content:center; gap:12px}
 
   /* Preview takes the bottom half */
   .wrap > .card:last-child{
-    min-height: 50vh;
+    min-height:50vh;
     display:flex;
     flex-direction:column;
   }
@@ -83,12 +107,12 @@
   .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
 
   /* Hide the old JSONBin box to avoid confusion */
-  .jsonbin { display:none; }
+  .jsonbin{display:none}
 </style>
 </head>
 <body>
   <div class="wrap">
-    <!-- TOP: Match header + Teams (NO Save/Load UI) -->
+    <!-- TOP: Match header + Teams -->
     <div class="card">
       <div class="match-head">
         <div>
@@ -105,87 +129,69 @@
         </div>
       </div>
 
+      <!-- Team A -->
       <div class="team-card" style="margin-bottom:12px">
         <h2>Team A</h2>
-        <div class="team-row">
+
+        <div class="team-head">
           <div>
             <label>Name</label>
             <input id="teamAName" type="text" placeholder="Team A" />
           </div>
-          <div>
-            <label>Score A</label>
-            <div class="stack">
-              <button id="btnAminus30" class="btn ghost">−30</button>
-              <button id="btnAminus"   class="btn ghost">−10</button>
-              <input id="scoreA" type="number" min="0" step="10" value="0" />
-              <button id="btnAplus"    class="btn ghost">+10</button>
-              <button id="btnAplus30"  class="btn gold">+30</button>
-            </div>
-            <div class="tiny" style="margin-top:6px">
-              Score total: <span id="liveA">—</span>
-            </div>
+
+          <div class="color-group">
+            <span class="lbl">Primary Color</span>
+            <input id="A1picker" type="color" value="#555555" />
+            <span id="A1sw" class="sw"></span>
+            <span style="width:18px"></span>
+            <span id="A1hex" class="hex">#555555</span>
+
+            <input id="A2picker" type="color" value="#333333" />
+            <span id="A2sw" class="sw"></span>
+            <span id="A2hex" class="hex" style="grid-column:5 / span 3">#333333</span>
           </div>
         </div>
 
-        <div class="row" style="margin-top:10px">
-          <div>
-            <label>Primary Color</label>
-            <div class="stack">
-              <input id="A1picker" type="color" value="#555555" />
-              <span id="A1sw" class="sw"></span>
-              <span id="A1hex" class="hex">#555555</span>
-            </div>
-          </div>
-          <div>
-            <label>Secondary Color</label>
-            <div class="stack">
-              <input id="A2picker" type="color" value="#333333" />
-              <span id="A2sw" class="sw"></span>
-              <span id="A2hex" class="hex">#333333</span>
-            </div>
-          </div>
+        <div class="scoreTotal">Score total: <strong><span id="liveA">0</span></strong></div>
+
+        <div class="stack scoreBtns">
+          <button id="btnAminus30" class="btn ghost">−30</button>
+          <button id="btnAminus"   class="btn ghost">−10</button>
+          <button id="btnAplus"    class="btn ghost">+10</button>
+          <button id="btnAplus30"  class="btn gold">+30</button>
         </div>
       </div>
 
+      <!-- Team B -->
       <div class="team-card">
         <h2>Team B</h2>
-        <div class="team-row">
+
+        <div class="team-head">
           <div>
             <label>Name</label>
             <input id="teamBName" type="text" placeholder="Team B" />
           </div>
-          <div>
-            <label>Score B</label>
-            <div class="stack">
-              <button id="btnBminus30" class="btn ghost">−30</button>
-              <button id="btnBminus"   class="btn ghost">−10</button>
-              <input id="scoreB" type="number" min="0" step="10" value="0" />
-              <button id="btnBplus"    class="btn ghost">+10</button>
-              <button id="btnBplus30"  class="btn gold">+30</button>
-            </div>
-            <div class="tiny" style="margin-top:6px">
-              Score total: <span id="liveB">—</span>
-            </div>
+
+          <div class="color-group">
+            <span class="lbl">Secondary Color</span>
+            <input id="B1picker" type="color" value="#333333" />
+            <span id="B1sw" class="sw"></span>
+            <span style="width:18px"></span>
+            <span id="B1hex" class="hex">#333333</span>
+
+            <input id="B2picker" type="color" value="#111111" />
+            <span id="B2sw" class="sw"></span>
+            <span id="B2hex" class="hex" style="grid-column:5 / span 3">#111111</span>
           </div>
         </div>
 
-        <div class="row" style="margin-top:10px">
-          <div>
-            <label>Primary Color</label>
-            <div class="stack">
-              <input id="B1picker" type="color" value="#333333" />
-              <span id="B1sw" class="sw"></span>
-              <span id="B1hex" class="hex">#333333</span>
-            </div>
-          </div>
-          <div>
-            <label>Secondary Color</label>
-            <div class="stack">
-              <input id="B2picker" type="color" value="#111111" />
-              <span id="B2sw" class="sw"></span>
-              <span id="B2hex" class="hex">#111111</span>
-            </div>
-          </div>
+        <div class="scoreTotal">Score total: <strong><span id="liveB">0</span></strong></div>
+
+        <div class="stack scoreBtns">
+          <button id="btnBminus30" class="btn ghost">−30</button>
+          <button id="btnBminus"   class="btn ghost">−10</button>
+          <button id="btnBplus"    class="btn ghost">+10</button>
+          <button id="btnBplus30"  class="btn gold">+30</button>
         </div>
       </div>
     </div>
@@ -201,27 +207,15 @@
         Preview
       </div>
 
-      <!-- Old JSONBin tools kept but hidden -->
+      <!-- (Old JSONBin tools kept but hidden for now) -->
       <div class="card jsonbin" style="margin-top:16px">
         <h2>JSONBin Settings</h2>
-        <div class="row">
-          <div>
-            <label>Bin ID</label>
-            <input id="binId" type="text" placeholder="YOUR_BIN_ID" />
-          </div>
-          <div>
-            <label>X-Master-Key</label>
-            <input id="masterKey" type="password" placeholder="••••••••••••" />
-            <label class="tiny"><input id="rememberKey" type="checkbox"> Remember key on this device</label>
-          </div>
-        </div>
         <div class="stack" style="margin-top:10px">
           <button id="btnTest" class="btn">Test Read</button>
           <div class="grow"></div>
           <span id="binStatus" class="status">Bin idle</span>
         </div>
-        <h2 style="margin-top:14px">Latest from Bin</h2>
-        <pre id="lastJson">(none)</pre>
+        <pre id="lastJson" style="margin-top:12px">(none)</pre>
       </div>
     </div>
   </div>
