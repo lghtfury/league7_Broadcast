@@ -99,6 +99,9 @@
               <button id="btnAplus"    class="btn ghost">+10</button>
               <button id="btnAplus30"  class="btn gold">+30</button>
             </div>
+            <div class="tiny" style="margin-top:6px">
+              Overlay total: <span id="liveA">—</span>
+            </div>
           </div>
         </div>
 
@@ -137,6 +140,9 @@
               <input id="scoreB" type="number" min="0" step="10" value="0" />
               <button id="btnBplus"    class="btn ghost">+10</button>
               <button id="btnBplus30"  class="btn gold">+30</button>
+            </div>
+            <div class="tiny" style="margin-top:6px">
+              Overlay total: <span id="liveB">—</span>
             </div>
           </div>
         </div>
@@ -193,7 +199,7 @@
             <input id="binId" type="text" placeholder="YOUR_BIN_ID" />
           </div>
           <div>
-            <label>X‑Master‑Key</label>
+            <label>X-Master-Key</label>
             <input id="masterKey" type="password" placeholder="••••••••••••" />
             <label class="tiny"><input id="rememberKey" type="checkbox"> Remember key on this device</label>
           </div>
@@ -282,7 +288,7 @@ function wireColor(id){
 }
 ['A1','A2','B1','B2'].forEach(wireColor);
 
-/* ========== score buttons (−30, −10, +10, +30, Clear All) ========== */
+/* ========== score buttons and Clear Scores ========== */
 const clamp0 = n => Math.max(0, n|0);
 function addScore(id, delta){
   const el = $(id);
@@ -448,10 +454,10 @@ async function boot(){
 boot();
 </script>
 
-<!-- ========== FIREBASE real-time push (panel → overlay) ========== -->
+<!-- ========== FIREBASE real-time push + live overlay totals ========== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
 
 /* ✅ Your Firebase config */
@@ -472,13 +478,25 @@ await signInAnonymously(auth);
 
 // Choose overlay namespace via ?overlay=… (default "main")
 const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || "main";
+const OVERLAY_REF = doc(db, "overlays", OVERLAY_ID);
+
+// Live subscribe to overlay totals so panel shows what stream has
+onSnapshot(OVERLAY_REF, (snap) => {
+  const data = snap.data() || {};
+  const a = Number(data.mapScoreA) || 0;
+  const b = Number(data.mapScoreB) || 0;
+  const elA = document.getElementById('liveA');
+  const elB = document.getElementById('liveB');
+  if (elA) elA.textContent = a;
+  if (elB) elB.textContent = b;
+});
 
 // Push to Firestore on click
 document.getElementById("btnPush").addEventListener("click", async () => {
   const payload = window.collectPayload();
   try {
     window.setStatus("Pushing…");
-    await setDoc(doc(db, "overlays", OVERLAY_ID), payload, { merge: true });
+    await setDoc(OVERLAY_REF, payload, { merge: true });
     window.setStatus("Pushed ✔", "ok");
   } catch (e) {
     console.error(e);
