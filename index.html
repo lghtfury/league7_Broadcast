@@ -1,188 +1,102 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>League 7 In-Game Overlay</title>
-  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
-  <style>
-    /* ---------- Base ---------- */
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%; height: 100%;
-      background: transparent !important;
-      overflow: hidden;
-      font-family: 'IM Fell English SC', serif;
-    }
+/* ---------- Base ---------- */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%; height: 100%;
+  background: transparent !important;
+  overflow: hidden;
+  font-family: 'IM Fell English SC', serif;
+}
 
-    :root{
-      /* frame thickness and color fallbacks */
-      --frame: 15px;
-      --A1:#555; --A2:#333; /* Team A primary/secondary */
-      --B1:#333; --B2:#111; /* Team B primary/secondary */
-    }
+:root{
+  /* frame thickness and color fallbacks */
+  --frame: 15px;
+  --A1:#555; --A2:#333; /* Team A primary/secondary */
+  --B1:#333; --B2:#111; /* Team B primary/secondary */
+}
 
-    #overlay {
-      position: relative;
-      width: 1920px;
-      height: 1080px;
-      box-sizing: border-box;
-      background: transparent !important;
-    }
+#overlay {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  box-sizing: border-box;
+  background: transparent !important;
+}
 
-    /* Background frame art (if you use one) */
-    #background {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      pointer-events: none;
-      z-index: 0;
-    }
+/* Background frame art (if you use one) */
+#background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  z-index: 0;
+}
 
-    /* ---------- Gradient frame (no wash, border only) ---------- */
-    #frame, #frame .edge { position: absolute; pointer-events: none; }
-    #frame { inset: 0; z-index: 1; }
+/* ---------- Gradient frame (no wash, border only) ---------- */
+#frame, #frame .edge { position: absolute; pointer-events: none; }
+#frame { inset: 0; z-index: 1; }
 
-    .edge { background: transparent; }
+.edge { background: transparent; }
+.edge.top    { left: 0; right: 0; top: 0; height: var(--frame); }
+.edge.bottom { left: 0; right: 0; bottom: 0; height: var(--frame); }
+.edge.left   { left: 0; top: 0; bottom: 0; width: var(--frame); }
+.edge.right  { right: 0; top: 0; bottom: 0; width: var(--frame); }
 
-    .edge.top    { left: 0; right: 0; top: 0; height: var(--frame); }
-    .edge.bottom { left: 0; right: 0; bottom: 0; height: var(--frame); }
-    .edge.left   { left: 0; top: 0; bottom: 0; width: var(--frame); }
-    .edge.right  { right: 0; top: 0; bottom: 0; width: var(--frame); }
+/* Left/right use each team’s two tones (vertical fade) */
+.edge.left  { background: linear-gradient(to bottom, var(--A1), var(--A2)); }
+.edge.right { background: linear-gradient(to bottom, var(--B1), var(--B2)); }
 
-    /* Left/right use each team’s two tones (vertical fade) */
-    .edge.left  { background: linear-gradient(to bottom, var(--A1), var(--A2)); }
-    .edge.right { background: linear-gradient(to bottom, var(--B1), var(--B2)); }
+/* Top/bottom blend A→B */
+.edge.top    { background: linear-gradient(to right, var(--A1), var(--B1)); }
+.edge.bottom { background: linear-gradient(to right, var(--A2), var(--B2)); }
 
-    /* Top/bottom blend A→B; swap or change to taste */
-    .edge.top    { background: linear-gradient(to right, var(--A1), var(--B1)); }
-    .edge.bottom { background: linear-gradient(to right, var(--A2), var(--B2)); }
+/* ---------- Anchor the text to the actual banner/plate rectangles ---------- */
+/* Each of these elements is now the anchor box itself. We center the text inside. */
 
-    /* ---------- UI: team names & scores ---------- */
-    #teamA, #teamB {
-      position: absolute;
-      top: 35px;
-      color: white;
-      font-weight: bold;
-      font-size: 36px;
-      z-index: 3;
-      white-space: nowrap;
-      max-width: 540px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      text-align: center;
-    }
-    #teamA { left: 460px; }
-    #teamB { right: 460px; }
+#teamA, #teamB, #scoreA, #scoreB{
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
 
-    #scoreA, #scoreB {
-      position: absolute;
-      color: black;
-      font-size: 56px;
-      font-weight: bold;
-      text-shadow: 2px 2px 4px #000;
-      z-index: 3;
-    }
-    #scoreA { top: 87px; left: 595px; transform: translateX(-50%); }
-    #scoreB { top: 86px; right: 595px; transform: translateX(50%); }
-  </style>
-</head>
-<body>
-  <div id="overlay">
-    <!-- Optional background art (non-tint) -->
-    <img id="background" src="overlay.png" alt="Overlay background" />
+/* Your measured rectangles (from Paint) */
+#teamA { /* Blue banner */
+  left: 839px;  top: 88px;
+  width: 451px; height: 61px;
+  color: #fff; font-weight: 700;
+  font-size: 36px; /* JS still downscales if long */
+}
+#teamB { /* Red banner */
+  left: 1529px; top: 90px;
+  width: 461px; height: 65px;
+  color: #fff; font-weight: 700;
+  font-size: 36px;
+}
 
-    <!-- Gradient border only -->
-    <div id="frame" aria-hidden="true">
-      <div class="edge top"></div>
-      <div class="edge right"></div>
-      <div class="edge bottom"></div>
-      <div class="edge left"></div>
-    </div>
+#scoreA { /* Team A score plate */
+  left: 698px;  top: 134px;
+  width: 192px; height: 43px;
+  color: #000; font-weight: 800;
+  font-size: 56px; text-shadow: 2px 2px 4px #000;
+}
+#scoreB { /* Team B score plate */
+  left: 1420px; top: 139px;
+  width: 199px; height: 48px;
+  color: #000; font-weight: 800;
+  font-size: 56px; text-shadow: 2px 2px 4px #000;
+}
 
-    <!-- Team names and scores -->
-    <div id="teamA">Team A</div>
-    <div id="teamB">Team B</div>
-    <div id="scoreA">0</div>
-    <div id="scoreB">0</div>
-  </div>
-
-  <script>
-    /* ---------- Overlay render helpers (unchanged) ---------- */
-    function safeColor(hex, fallback = "#222") {
-      const v = String(hex || "").trim();
-      return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : fallback;
-    }
-
-    function adjustFontSize(id) {
-      const el = document.getElementById(id);
-      const length = (el.textContent || "").trim().length;
-      el.style.fontSize =
-        length > 20 ? "24px" :
-        length > 16 ? "26px" :
-        length > 12 ? "30px" : "36px";
-    }
-
-    function setBorderGradient(a1, a2, b1, b2) {
-      const A1 = safeColor(a1, "#555");
-      const A2 = safeColor(a2, "#333");
-      const B1 = safeColor(b1, "#333");
-      const B2 = safeColor(b2, "#111");
-      const root = document.documentElement;
-      root.style.setProperty("--A1", A1);
-      root.style.setProperty("--A2", A2);
-      root.style.setProperty("--B1", B1);
-      root.style.setProperty("--B2", B2);
-    }
-
-    function applyPayload(data) {
-      if (!data) return;
-      document.getElementById("teamA").textContent = data.teamAName || data.teamA || "Team A";
-      document.getElementById("teamB").textContent = data.teamBName || data.teamB || "Team B";
-      adjustFontSize("teamA");
-      adjustFontSize("teamB");
-      document.getElementById("scoreA").textContent = data.mapScoreA ?? 0;
-      document.getElementById("scoreB").textContent = data.mapScoreB ?? 0;
-      setBorderGradient(
-        data?.teamAColors?.primary,
-        data?.teamAColors?.secondary,
-        data?.teamBColors?.primary,
-        data?.teamBColors?.secondary
-      );
-    }
-  </script>
-
-  <!-- ---------- Firestore live reader (ONLY) ---------- -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-    import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
-
-    // SAME config you used in panel.html
-    const firebaseConfig = {
-      apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
-      authDomain: "league7overlay.firebaseapp.com",
-      projectId: "league7overlay",
-      storageBucket: "league7overlay.firebasestorage.app",
-      messagingSenderId: "126648845416",
-      appId: "1:126648845416:web:06be2078b0c95bbb97a7dd",
-      measurementId: "G-QW2NG2BNF9"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db  = getFirestore(app);
-
-    // read ?overlay=... (default "main")
-    const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || "main";
-
-    // Live updates from Firestore
-    onSnapshot(doc(db, "overlays", OVERLAY_ID), (snap) => {
-      const data = snap.data();
-      if (!data) return;
-      // call the helper defined above
-      window.applyPayload(data);
-    });
-  </script>
-</body>
-</html>
+/* ---------- Optional: quick visual debugging (turn on by adding class="debug" to <body>) ---------- */
+body.debug #teamA { outline: 2px dashed rgba(0,128,255,.7); }
+body.debug #teamB { outline: 2px dashed rgba(255,64,64,.7); }
+body.debug #scoreA{ outline: 2px dashed rgba(0,255,128,.7); }
+body.debug #scoreB{ outline: 2px dashed rgba(255,200,0,.9); }
