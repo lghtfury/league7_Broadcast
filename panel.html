@@ -17,12 +17,23 @@
     background:linear-gradient(180deg,#0a0b0e,#0e1320 55%,#0a0b0e); color:var(--text);
     padding:24px; display:flex; justify-content:center;
   }
-  .wrap{width:min(1100px,100%); display:grid; grid-template-columns: 460px 1fr; gap:20px}
+
+  /* TOP/BOTTOM LAYOUT */
+  .wrap{
+    width:min(1100px,100%);
+    display:grid;
+    grid-template-columns: 1fr;     /* single column */
+    grid-template-rows: auto 1fr;   /* top = controls, bottom = preview */
+    gap:20px;
+    height: calc(100vh - 48px);
+  }
+
   .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 12px 28px rgba(0,0,0,.35)}
 
+  /* Header row with buttons on right */
   .match-head{
     background:#000; border:1px solid #222; border-radius:14px; padding:14px; margin-bottom:12px;
-    display:grid; grid-template-columns: 1fr auto auto; gap:10px; align-items:center;
+    display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center;
   }
   .match-head input, .match-head select{height:40px}
 
@@ -33,6 +44,7 @@
   }
   .row{display:grid; grid-template-columns: 1fr 1fr; gap:12px}
   .stack{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .stack.right{justify-content:flex-end}
   .grow{flex:1}
   .btn{
     appearance:none; border:1px solid #2a3350; background:#141a2a; color:var(--text);
@@ -45,12 +57,18 @@
 
   .team-card{background:var(--ink); border:1px solid var(--line); border-radius:12px; padding:12px}
   .team-row{display:grid; grid-template-columns: 1fr 1fr; gap:10px; align-items:end}
-  .swatches{display:flex; gap:8px; align-items:center}
   .sw{width:22px; height:22px; border-radius:6px; border:2px solid rgba(255,255,255,.9); box-shadow:0 0 6px rgba(0,0,0,.5)}
   .hex{font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:#b8c4e6}
 
+  /* Preview takes the bottom half */
+  .wrap > .card:last-child{
+    min-height: 50vh;
+    display:flex;
+    flex-direction:column;
+  }
   .preview{
-    position:relative; height:280px; border-radius:14px; overflow:hidden; background:#0b0f19; user-select:none;
+    position:relative; flex:1; min-height:280px;
+    border-radius:14px; overflow:hidden; background:#0b0f19; user-select:none;
     display:flex; align-items:center; justify-content:center; color:#9aa9ce;
   }
   .edge{position:absolute; pointer-events:none}
@@ -70,7 +88,7 @@
 </head>
 <body>
   <div class="wrap">
-    <!-- LEFT: Match header + Teams -->
+    <!-- TOP: Match header + Teams -->
     <div class="card">
       <div class="match-head">
         <div>
@@ -79,8 +97,13 @@
             <option value="">Loading…</option>
           </select>
         </div>
-        <button id="btnLoad" class="btn">Load Match</button>
-        <button id="btnSave" class="btn ghost">Save Match</button>
+
+        <!-- RIGHT: Clear + Push + Status -->
+        <div class="stack right">
+          <button id="btnClearAll" class="btn ghost">Clear Scores</button>
+          <button id="btnPush" class="btn primary">Push to Overlay</button>
+          <span id="status" class="status">Idle</span>
+        </div>
       </div>
 
       <div class="team-card" style="margin-bottom:12px">
@@ -166,21 +189,9 @@
           </div>
         </div>
       </div>
-
-      <!-- Global Clear -->
-      <div class="stack" style="margin-top:10px">
-        <button id="btnClearAll" class="btn ghost">Clear Scores</button>
-      </div>
-
-      <div class="stack" style="margin-top:14px">
-        <button id="btnPush" class="btn primary">Push to Overlay</button>
-        <div class="grow"></div>
-        <span id="status" class="status">Idle</span>
-      </div>
-      <div class="tiny" style="margin-top:6px">“Push to Overlay” writes to Firestore; the overlay listens live.</div>
     </div>
 
-    <!-- RIGHT: Preview + (old JSONBin box hidden) -->
+    <!-- BOTTOM: Preview -->
     <div class="card">
       <h2>Border Preview (matches overlay)</h2>
       <div class="preview" id="preview">
@@ -191,6 +202,7 @@
         Preview
       </div>
 
+      <!-- Old JSONBin tools kept but hidden -->
       <div class="card jsonbin" style="margin-top:16px">
         <h2>JSONBin Settings</h2>
         <div class="row">
@@ -347,24 +359,6 @@ function setBinStatus(msg, kind){
   el.classList.remove('ok','warn','err');
   if (kind) el.classList.add(kind);
 }
-
-$('#btnSave').onclick = ()=>{
-  const id = $('#matchId').value.trim();
-  if (!id) return setStatus('Pick a Match ID', 'warn');
-  const matches = getMatches();
-  matches[id] = collectPayload();
-  setMatches(matches);
-  setStatus(`Saved ${id}`, 'ok');
-};
-
-$('#btnLoad').onclick = ()=>{
-  const id = $('#matchId').value.trim();
-  if (!id) return setStatus('Pick a Match ID', 'warn');
-  const m = getMatches()[id];
-  if (!m){ setStatus(`No saved data for ${id}`, 'warn'); return; }
-  fillFromPayload(m);
-  setStatus(`Loaded ${id}`, 'ok');
-};
 
 /* (Old JSONBin helpers left in but UI is hidden) */
 const urlLatest = bin => `https://api.jsonbin.io/v3/b/${bin}/latest`;
