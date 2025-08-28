@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>League 7 — Rosters Overlay</title>
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      background: transparent !important;
+      overflow: hidden;
+    }
+    :root{
+      --A1:#555; --A2:#333;
+      --B1:#333; --B2:#111;
+      --boxPad: 18px;
+      --boxBgAlpha: 1; /* no motion = static */
+      --scrim: rgba(0,0,0,.12);
+      --nameColor:#fff;
+      --listColor:#f3f6ff;
+    }
+    #wrap {
+      position: relative;
+      width: 1920px; height: 1080px;
+      box-sizing: border-box;
+      display: grid;
+      grid-template-columns: 1fr 220px 1fr; /* left | VS | right */
+      grid-template-rows: 100%;
+      align-items: stretch;
+    }
+
+    /* Team boxes */
+    .team {
+      position: relative;
+      display: grid;
+      grid-template-rows: auto 1fr auto; /* name | roster | logo */
+      gap: 14px;
+      padding: var(--boxPad);
+      box-sizing: border-box;
+      border-radius: 16px;
+      overflow: hidden;
+      /* diagonal gradient background */
+      background: linear-gradient(45deg, #444, #222);
+    }
+    .team.left  { background: linear-gradient(45deg, var(--A1), var(--A2)); margin: 28px 16px 28px 28px; }
+    .team.right { background: linear-gradient(45deg, var(--B1), var(--B2)); margin: 28px 28px 28px 16px; }
+
+    /* Scrim for readability */
+    .scrim {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0); /* we’ll use local scrims behind text instead */
+      pointer-events: none;
+    }
+
+    /* Team name */
+    .name {
+      font-family: 'IM Fell English SC', serif;
+      color: var(--nameColor);
+      line-height: 1.05;
+      letter-spacing: .5px;
+      text-shadow: 0 2px 4px rgba(0,0,0,.25);
+      /* dynamic size; will be adjusted by JS for long names */
+      font-size: 56px;
+      padding: 8px 12px;
+      background: var(--scrim);
+      border-radius: 10px;
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Roster list area */
+    .roster {
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      color: var(--listColor);
+      background: var(--scrim);
+      border-radius: 10px;
+      padding: 12px 14px;
+      overflow: hidden; /* cap to box */
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 22px;
+      line-height: 1.25;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .badgeC {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 22px; height: 22px; padding: 0 6px;
+      font-size: 14px; font-weight: 700; color: #111;
+      background: #ffd966; border-radius: 999px; box-shadow: 0 1px 2px rgba(0,0,0,.25);
+    }
+
+    /* Logo at bottom */
+    .logoWrap {
+      display: grid; place-items: center;
+      background: rgba(0,0,0,.10);
+      border-radius: 10px;
+      padding: 10px;
+      min-height: 120px; /* keeps space even with/without logo */
+    }
+    .logo {
+      max-width: 90%; max-height: 100px; object-fit: contain;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,.35));
+      display: none; /* shown when src valid */
+    }
+    .logo.show { display: block; }
+
+    /* VS column */
+    #vsCol {
+      display: grid; place-items: center;
+    }
+    .vs {
+      width: 160px; height: 160px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,215,128,.8);
+      background:
+        radial-gradient(closest-side, rgba(255,255,255,.08), rgba(255,255,255,0)),
+        linear-gradient(135deg, rgba(255,215,128,.35), rgba(255,215,128,.05));
+      display: grid; place-items: center;
+      font-family: 'IM Fell English SC', serif;
+      font-size: 72px; color:#fff;
+      text-shadow: 0 2px 6px rgba(0,0,0,.5);
+    }
+
+    /* Default state */
+    .empty .name { opacity:.85 }
+    .empty .row  { opacity:.85 }
+    .pendingNote {
+      position:absolute; right:12px; bottom:12px;
+      font: 600 12px Inter, system-ui, sans-serif;
+      color: rgba(255,255,255,.8);
+      background: rgba(0,0,0,.25);
+      padding: 6px 8px; border-radius: 8px;
+    }
+
+    /* Slight safety for very long names */
+    @media (max-width: 1920px){
+      .name { font-size: 52px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <!-- Team A -->
+    <section id="teamA" class="team left empty">
+      <div class="scrim" aria-hidden="true"></div>
+      <div id="nameA" class="name">TEAM A</div>
+      <div id="listA" class="roster">
+        <div class="row"><span class="badgeC">C</span> Captain A</div>
+        <div class="row">Player A2</div>
+        <div class="row">Player A3</div>
+        <div class="row">Player A4</div>
+        <div class="row">Player A5</div>
+        <div class="row">Player A6</div>
+      </div>
+      <div class="logoWrap">
+        <img id="logoA" class="logo" alt="Team A logo">
+      </div>
+      <div class="pendingNote">[ Roster pending… ]</div>
+    </section>
+
+    <!-- VS -->
+    <div id="vsCol"><div class="vs">VS</div></div>
+
+    <!-- Team B -->
+    <section id="teamB" class="team right empty">
+      <div class="scrim" aria-hidden="true"></div>
+      <div id="nameB" class="name">TEAM B</div>
+      <div id="listB" class="roster">
+        <div class="row"><span class="badgeC">C</span> Captain B</div>
+        <div class="row">Player B2</div>
+        <div class="row">Player B3</div>
+        <div class="row">Player B4</div>
+        <div class="row">Player B5</div>
+        <div class="row">Player B6</div>
+      </div>
+      <div class="logoWrap">
+        <img id="logoB" class="logo" alt="Team B logo">
+      </div>
+      <div class="pendingNote">[ Roster pending… ]</div>
+    </section>
+  </div>
+
+  <!-- Firestore live reader -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+    import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
+      authDomain: "league7overlay.firebaseapp.com",
+      projectId: "league7overlay",
+      storageBucket: "league7overlay.firebasestorage.app",
+      messagingSenderId: "126648845416",
+      appId: "1:126648845416:web:06be2078b0c95bbb97a7dd",
+      measurementId: "G-QW2NG2BNF9"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || "main";
+
+    const $ = sel => document.querySelector(sel);
+    const safe = v => (Array.isArray(v) ? v : (v ? [v] : []));
+    const safeColor = (hex, fallback="#222") => {
+      const v = String(hex||"").trim();
+      return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : fallback;
+    };
+    function adjustNameSize(el){
+      const len = (el.textContent||"").trim().length;
+      el.style.fontSize =
+        len > 26 ? "36px" :
+        len > 22 ? "44px" :
+        len > 18 ? "50px" : "56px";
+    }
+    function setTeamBoxColors(side, c1, c2){
+      const A = safeColor(c1, side==="A" ? "#555" : "#333");
+      const B = safeColor(c2, side==="A" ? "#333" : "#111");
+      if(side==="A"){
+        document.documentElement.style.setProperty("--A1", A);
+        document.documentElement.style.setProperty("--A2", B);
+      } else {
+        document.documentElement.style.setProperty("--B1", A);
+        document.documentElement.style.setProperty("--B2", B);
+      }
+    }
+    function fillRoster(listEl, captain, rosterArr){
+      listEl.innerHTML = "";
+      const rows = [];
+      const cap = (captain||"").trim();
+      if(cap){
+        const r = document.createElement("div");
+        r.className = "row";
+        r.innerHTML = `<span class="badgeC">C</span> ${cap}`;
+        rows.push(r);
+      }
+      // add rest, skipping duplicate captain if present
+      for(const name of rosterArr){
+        const n = (name||"").trim();
+        if(!n) continue;
+        if(cap && n.toLowerCase() === cap.toLowerCase()) continue;
+        const r = document.createElement("div");
+        r.className = "row";
+        r.textContent = n;
+        rows.push(r);
+      }
+      // keep to 10 max visible (cap fits roster cap of 6–10)
+      rows.slice(0, 10).forEach(el => listEl.appendChild(el));
+    }
+    function setLogo(imgEl, url){
+      if(url && /^https?:\/\//i.test(url)){
+        imgEl.src = url;
+        imgEl.onload  = ()=> imgEl.classList.add("show");
+        imgEl.onerror = ()=> imgEl.classList.remove("show");
+      } else {
+        imgEl.removeAttribute("src");
+        imgEl.classList.remove("show");
+      }
+    }
+    function applyData(d){
+      // Names
+      $("#nameA").textContent = d.teamAName || d.teamA || "TEAM A";
+      $("#nameB").textContent = d.teamBName || d.teamB || "TEAM B";
+      adjustNameSize($("#nameA"));
+      adjustNameSize($("#nameB"));
+
+      // Colors (diagonal backgrounds)
+      setTeamBoxColors("A", d?.teamAColors?.primary, d?.teamAColors?.secondary);
+      setTeamBoxColors("B", d?.teamBColors?.primary, d?.teamBColors?.secondary);
+
+      // Rosters (full)
+      fillRoster($("#listA"), d.captainA, safe(d.rosterA));
+      fillRoster($("#listB"), d.captainB, safe(d.rosterB));
+
+      // Logos (bottom)
+      setLogo($("#logoA"), d.teamALogo);
+      setLogo($("#logoB"), d.teamBLogo);
+
+      // Remove empty style if we have any real data
+      const hasA = (d.teamAName || d.rosterA?.length || d.teamALogo);
+      const hasB = (d.teamBName || d.rosterB?.length || d.teamBLogo);
+      const aBox = $("#teamA");
+      const bBox = $("#teamB");
+      aBox.classList.toggle("empty", !hasA);
+      bBox.classList.toggle("empty", !hasB);
+      // hide pending notes if loaded
+      aBox.querySelector(".pendingNote").style.display = hasA ? "none" : "block";
+      bBox.querySelector(".pendingNote").style.display = hasB ? "none" : "block";
+    }
+
+    onSnapshot(doc(db, "overlays", OVERLAY_ID), (snap) => {
+      const data = snap.data() || {};
+      applyData(data);
+    });
+  </script>
+</body>
+</html>
