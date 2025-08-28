@@ -22,15 +22,14 @@
   .wrap{
     width:min(1100px,100%);
     display:grid;
-    grid-template-columns: 1fr;     /* single column */
-    grid-template-rows: auto 1fr;   /* top = controls, bottom = preview */
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
     gap:20px;
     height: calc(100vh - 48px);
   }
 
   .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 12px 28px rgba(0,0,0,.35)}
 
-  /* Header row with buttons on right */
   .match-head{
     background:#000; border:1px solid #222; border-radius:14px; padding:14px; margin-bottom:12px;
     display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center;
@@ -55,7 +54,6 @@
 
   .team-card{background:var(--ink); border:1px solid var(--line); border-radius:12px; padding:12px}
 
-  /* Name left, colors right */
   .team-head{
     display:grid;
     grid-template-columns: 1fr auto;
@@ -64,7 +62,7 @@
   }
   .color-group{
     display:grid;
-    grid-template-columns: auto auto auto 18px auto auto auto; /* label | picker | sw | gap | hex | picker | sw */
+    grid-template-columns: auto auto auto 18px auto auto auto;
     gap:8px 10px;
     align-items:center;
   }
@@ -73,7 +71,6 @@
   .hex{font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:#b8c4e6; min-width:70px}
   .color-group input[type="color"]{width:38px; height:28px; padding:0; border:0; background:transparent}
 
-  /* Big centered totals + centered buttons */
   .scoreTotal{
     text-align:center;
     font-size:28px;
@@ -84,7 +81,6 @@
   .scoreTotal strong{font-size:34px; color:#e9f1ff}
   .scoreBtns{justify-content:center; gap:12px}
 
-  /* Preview bottom */
   .wrap > .card:last-child{
     min-height:50vh;
     display:flex;
@@ -106,7 +102,6 @@
   .status{font-size:12px; color:#9fb0d8}
   .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
 
-  /* Hide the old JSONBin box */
   .jsonbin{display:none}
 </style>
 </head>
@@ -151,9 +146,7 @@
           </div>
         </div>
 
-        <!-- Big total (driven by hidden #scoreA) -->
         <div class="scoreTotal">Score total: <strong><span id="liveA">0</span></strong></div>
-        <!-- Keep original logic: invisible numeric input as the source of truth -->
         <input id="scoreA" type="number" value="0"
                style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true" />
 
@@ -175,7 +168,7 @@
             <input id="teamBName" type="text" placeholder="Team B" />
           </div>
 
-          <div class="color-group">
+        <div class="color-group">
             <span class="lbl">Secondary Color</span>
             <input id="B1picker" type="color" value="#333333" />
             <span id="B1sw" class="sw"></span>
@@ -188,7 +181,6 @@
           </div>
         </div>
 
-        <!-- Big total (driven by hidden #scoreB) -->
         <div class="scoreTotal">Score total: <strong><span id="liveB">0</span></strong></div>
         <input id="scoreB" type="number" value="0"
                style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true" />
@@ -213,7 +205,6 @@
         Preview
       </div>
 
-      <!-- Old JSONBin tools (hidden) -->
       <div class="card jsonbin" style="margin-top:16px">
         <h2>JSONBin Settings</h2>
         <div class="stack" style="margin-top:10px">
@@ -227,7 +218,7 @@
   </div>
 
 <script>
-/* ===== helpers & persistent panel cfg (JSONBin UI hidden) ===== */
+/* ===== helpers & persistent panel cfg ===== */
 const $ = s => document.querySelector(s);
 const hexOK = v => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v||'').trim());
 const LS_PANEL = 'l7_panel_cfg_v1';
@@ -295,7 +286,7 @@ function wireColor(id){
 }
 ['A1','A2','B1','B2'].forEach(wireColor);
 
-/* ===== scores: keep original logic, now with hidden inputs as source ===== */
+/* ===== scores ===== */
 function syncTotalsFromInputs(){
   const a = Number($('#scoreA')?.value) || 0;
   const b = Number($('#scoreB')?.value) || 0;
@@ -324,7 +315,7 @@ $('#btnClearAll').onclick = ()=>{
   syncTotalsFromInputs();
 };
 
-/* ===== payload for Firebase push (unchanged IDs) ===== */
+/* ===== payload for Firestore push ===== */
 function collectPayload(){
   return {
     teamAName: $('#teamAName').value || 'Team A',
@@ -350,7 +341,7 @@ function setBinStatus(msg, kind){
   if (kind) el.classList.add(kind);
 }
 
-/* ===== JSONBin read (kept for parity; UI hidden) ===== */
+/* ===== JSONBin read (UI hidden) ===== */
 const urlLatest = bin => `https://api.jsonbin.io/v3/b/${bin}/latest`;
 async function doRead(){
   savePanelCfg();
@@ -402,6 +393,22 @@ async function loadMatches(){
   sel.innerHTML = `<option value="">Select…</option>` + MATCH_ROWS.map(m=>`<option value="${m.id}">${m.id}</option>`).join('');
 }
 
+/* === NEW: publish selected teams (localStorage + RTDB) === */
+function publishSelectedTeams(teamAName, teamBName){
+  const a = teamAName || ($('#teamAName').value || '');
+  const b = teamBName || ($('#teamBName').value || '');
+
+  // localStorage fallback (same-machine overlays)
+  localStorage.setItem('teamA_name', a);
+  localStorage.setItem('teamB_name', b);
+
+  // Realtime Database (multi-producer overlays)
+  if (window.__rtdbSet) {
+    window.__rtdbSet({ teamA: a, teamB: b, updatedAt: Date.now() })
+      .catch(err => console.warn('RTDB publish failed:', err));
+  }
+}
+
 function onMatchPicked(){
   const id = $('#matchId').value.trim();
   if(!id) return;
@@ -419,16 +426,29 @@ function onMatchPicked(){
   if(hexOK(B.primary)){ $('#B1picker').value = B.primary; $('#B1picker').dispatchEvent(new Event('input')); }
   if(hexOK(B.secondary)){ $('#B2picker').value = B.secondary; $('#B2picker').dispatchEvent(new Event('input')); }
 
+  // NEW: publish right away so roster overlay switches instantly
+  publishSelectedTeams(m.teamA, m.teamB);
+
   setStatus(`Loaded from sheet: ${id}`, 'ok');
 }
 
 async function boot(){
   loadPanelCfg();
   renderPreview();
-  syncTotalsFromInputs();               // ensure totals reflect hidden inputs on load
+  syncTotalsFromInputs();
   try{
     await Promise.all([loadTeamColors(), loadMatches()]);
     $('#matchId').addEventListener('change', onMatchPicked);
+
+    // NEW: manual edits to team name inputs also publish
+    let tA, tB;
+    $('#teamAName').addEventListener('input', () => {
+      clearTimeout(tA); tA = setTimeout(() => publishSelectedTeams(), 150);
+    });
+    $('#teamBName').addEventListener('input', () => {
+      clearTimeout(tB); tB = setTimeout(() => publishSelectedTeams(), 150);
+    });
+
     $('#matchId').options.length ? setStatus('Sheet connected ✔', 'ok') : setStatus('No matches found', 'warn');
   }catch(e){
     console.error(e);
@@ -443,6 +463,8 @@ boot();
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
 import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+/* NEW: Realtime Database (for roster overlay listener) */
+import { getDatabase, ref as rtdbRef, set as rtdbSet } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
 
 /* Your Firebase config */
 const firebaseConfig = {
@@ -452,17 +474,23 @@ const firebaseConfig = {
   storageBucket: "league7overlay.firebasestorage.app",
   messagingSenderId: "126648845416",
   appId: "1:126648845416:web:06be2078b0c95bbb97a7dd",
-  measurementId: "G-QW2NG2BNF9"
+  measurementId: "G-QW2NG2BNF9",
+  /* If you created RTDB, include its URL here for best performance */
+  databaseURL: "https://league7overlay-default-rtdb.firebaseio.com"
 };
 
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
+const rtdb = getDatabase(app);
 const auth = getAuth(app);
 await signInAnonymously(auth);
 
 // Choose overlay namespace via ?overlay=… (default "main")
 const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || "main";
 const OVERLAY_REF = doc(db, "overlays", OVERLAY_ID);
+
+// Expose a helper so non-module script can call it
+window.__rtdbSet = (payload) => rtdbSet(rtdbRef(rtdb, "/overlay/selectedTeams"), payload);
 
 // Live mirror so panel shows overlay totals too
 onSnapshot(OVERLAY_REF, (snap) => {
@@ -480,12 +508,20 @@ onSnapshot(OVERLAY_REF, (snap) => {
   if (sB) sB.value = b;
 });
 
-// Push to Firestore on click
+// Push to Firestore on click AND publish selected teams for roster overlay
 document.getElementById("btnPush").addEventListener("click", async () => {
   const payload = window.collectPayload();
   try {
     window.setStatus("Pushing…");
     await setDoc(OVERLAY_REF, payload, { merge: true });
+
+    // NEW: also publish the teams so the roster overlay updates everywhere
+    await window.__rtdbSet({ teamA: payload.teamAName, teamB: payload.teamBName, updatedAt: Date.now() });
+
+    // Keep localStorage in sync for same-machine overlays
+    localStorage.setItem('teamA_name', payload.teamAName || '');
+    localStorage.setItem('teamB_name', payload.teamBName || '');
+
     window.setStatus("Pushed ✔", "ok");
   } catch (e) {
     console.error(e);
