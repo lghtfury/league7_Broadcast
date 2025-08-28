@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>League 7 — Roster Overlay</title>
+<title>League 7 — Roster Overlay (Static Mock w/ Fallback Logo)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
@@ -44,20 +44,28 @@
   .vs { font-family:"IM Fell English SC", serif; font-size:86px; letter-spacing:2px; background:linear-gradient(180deg,#fff,#d8d8d8); -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow:0 3px 0 rgba(0,0,0,0.45); }
   .status { position:absolute; inset:0; display:grid; place-items:center; color:var(--muted); }
   .hide { display:none !important; }
-  @media (max-width:1919px),(max-height:1079px){ #overlay{width:100vw; height:100vh;} .team-name{font-size:clamp(28px,4vw,44px);} .player{font-size:clamp(16px,1.9vw,20px);} .vs{font-size:clamp(64px,7vw,86px);} }
+  @media (max-width:1919px),(max-height:1079px){
+    #overlay{width:100vw; height:100vh;}
+    .team-name{font-size:clamp(28px,4vw,44px);}
+    .player{font-size:clamp(16px,1.9vw,20px);}
+    .vs{font-size:clamp(64px,7vw,86px);}
+  }
 </style>
 </head>
 <body>
 <div id="overlay">
-  <div id="loading" class="status">Loading rosters…</div>
+  <div id="loading" class="status hide">Loading rosters…</div>
 
-  <div id="content" class="wrap hide">
+  <div id="content" class="wrap">
     <section class="team" id="A">
       <div class="team-bg" id="bgA"></div>
       <div class="team-sheen"></div>
       <header class="head">
         <div class="logo-box"><img id="logoA" class="logo" alt=""></div>
-        <div class="meta"><div class="team-name" id="nameA">Team A</div><div class="tag" id="tagA"></div></div>
+        <div class="meta">
+          <div class="team-name" id="nameA">Team A</div>
+          <div class="tag" id="tagA">[AAA]</div>
+        </div>
       </header>
       <div class="roster" id="listA"></div>
     </section>
@@ -71,7 +79,10 @@
       <div class="team-sheen"></div>
       <header class="head">
         <div class="logo-box"><img id="logoB" class="logo" alt=""></div>
-        <div class="meta"><div class="team-name" id="nameB">Team B</div><div class="tag" id="tagB"></div></div>
+        <div class="meta">
+          <div class="team-name" id="nameB">Team B</div>
+          <div class="tag" id="tagB">[BBB]</div>
+        </div>
       </header>
       <div class="roster" id="listB"></div>
     </section>
@@ -79,147 +90,109 @@
 </div>
 
 <script>
-/* === CONFIG ===
- * CSV endpoint for Team Information tab (stable vs. pubhtml):
- */
-const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=495267531&single=true&output=csv";
-
-const $ = s => document.querySelector(s);
-const text = (el, v="") => el.textContent = v;
-const qs = new URLSearchParams(location.search);
-const normHex = h => { if(!h) return null; const v = h.trim().replace(/^#/,""); return /^[0-9a-fA-F]{3,8}$/.test(v) ? `#${v}` : null; };
-const setPanelGradient = (id,c1,c2)=>{ const el = typeof id==="string" ? document.getElementById(id) : id; el.style.background = `linear-gradient(135deg, ${normHex(c1)||"#333"}, ${normHex(c2)||"#111"})`; };
-const setLogo = (img,url)=>{ if(!url || url==="-" || url.toLowerCase()==="n/a"){ img.classList.remove("visible"); img.removeAttribute("src"); return; } img.src=url; img.onload=()=>img.classList.add("visible"); img.onerror=()=>img.classList.remove("visible"); };
-
-function parseCSV(text){
-  const rows=[]; let cur=[''], i=0, inQ=false;
-  for(const c of text){
-    if(c === '"'){ inQ = !inQ; cur[i]+=c; }
-    else if(c === ',' && !inQ){ cur.push(''); i++; }
-    else if((c === '\n' || c === '\r') && !inQ){
-      if(cur.some(x=>x.length)){ rows.push(cur.map(x=>x.replace(/^\s+|\s+$/g,'').replace(/^"|"$/g,'').replace(/""/g,'"'))); }
-      cur=['']; i=0;
-    } else { cur[i]+=c; }
-  }
-  if(cur.some(x=>x.length)) rows.push(cur.map(x=>x.replace(/^\s+|\s+$/g,'').replace(/^"|"$/g,'').replace(/""/g,'"')));
-  return rows;
-}
-
-async function loadTeamTable(){
-  const csv = await (await fetch(SHEET_CSV, {cache:"no-store"})).text();
-  const rows = parseCSV(csv);
-  const data = [];
-  for(let r=1; r<rows.length; r++){
-    const row = rows[r]; if(!row || !row.length) continue;
-    const name = (row[0]||"").trim(); if(!name) continue;
-    const tag  = (row[1]||"").trim();
-    const primary = (row[2]||"").trim();
-    const secondary = (row[3]||"").trim();
-    const roster = [];
-    for(let i=4;i<=13 && i<row.length;i++){
-      const v=(row[i]||"").trim();
-      if(v && v.toLowerCase()!=="n/a" && v!=="-") roster.push(v);
+  // ===== STATIC MOCK DATA ONLY =====
+  const MOCK = {
+    A: {
+      name: "Team A",
+      tag: "[AAA]",
+      primary: "#3893fc",
+      secondary: "#f1f7ff",
+      logo: "", // leave empty to test fallback
+      roster: [
+        "Captain A",
+        "Player A2","Player A3","Player A4","Player A5",
+        "Player A6","Player A7","Player A8","Player A9","Player A10"
+      ]
+    },
+    B: {
+      name: "Team B",
+      tag: "[BBB]",
+      primary: "#aa3b3b",
+      secondary: "#ffc548",
+      logo: "", // leave empty to test fallback
+      roster: [
+        "Captain B",
+        "Player B2","Player B3","Player B4","Player B5",
+        "Player B6","Player B7","Player B8","Player B9","Player B10"
+      ]
     }
-    data.push({ name, tag, primary, secondary, roster });
+  };
+
+  // Relative path to your repo's fallback: adjust if this HTML is in a subfolder
+  const FALLBACK_LOGO = "./images/teams/missing_logo.png";
+
+  const normHex = h => {
+    if(!h) return null;
+    const v = h.trim().replace(/^#/,"");
+    return /^[0-9a-fA-F]{3,8}$/.test(v) ? `#${v}` : null;
+  };
+
+  const setPanelGradient = (id,c1,c2)=>{
+    const el = typeof id==="string" ? document.getElementById(id) : id;
+    el.style.background = `linear-gradient(135deg, ${normHex(c1)||"#333"}, ${normHex(c2)||"#111"})`;
+  };
+
+  // Always show a logo. If none or broken, use missing_logo.png
+  const setLogo = (img,url)=>{
+    const useFallback = ()=>{ img.src = FALLBACK_LOGO; img.classList.add("visible"); };
+    if(!url || url==="-" || (typeof url === "string" && url.toLowerCase()==="n/a")) {
+      useFallback(); return;
+    }
+    img.onload = ()=> img.classList.add("visible");
+    img.onerror = useFallback;
+    img.src = url;
+  };
+
+  function renderSide(prefix, team){
+    document.getElementById(`name${prefix}`).textContent = team?.name || `Team ${prefix}`;
+    document.getElementById(`tag${prefix}`).textContent  = team?.tag  || "";
+    setLogo(document.getElementById(`logo${prefix}`), team?.logo || "");
+    setPanelGradient(`bg${prefix}`, team?.primary, team?.secondary);
+
+    const host = document.getElementById(`list${prefix}`);
+    host.innerHTML = "";
+
+    const roster = team?.roster || [];
+    if(!roster.length){
+      const empty = document.createElement("div");
+      empty.className = "player";
+      empty.style.opacity = .65;
+      empty.textContent = "No roster listed";
+      host.appendChild(empty);
+      return;
+    }
+
+    const pill1 = document.createElement("div");
+    pill1.className="pill";
+    pill1.textContent="Captain";
+    host.appendChild(pill1);
+
+    const cap = document.createElement("div");
+    cap.className="player captain";
+    cap.textContent=roster[0];
+    host.appendChild(cap);
+
+    const rest = roster.slice(1);
+    if(rest.length){
+      const pill2 = document.createElement("div");
+      pill2.className="pill muted";
+      pill2.textContent="Roster";
+      host.appendChild(pill2);
+
+      rest.forEach(p => {
+        const li=document.createElement("div");
+        li.className="player";
+        li.textContent=p;
+        host.appendChild(li);
+      });
+    }
   }
-  return data;
-}
 
-function findTeam(list, query){
-  if(!query) return null;
-  const q = query.trim().toLowerCase();
-  return list.find(t=>t.name.toLowerCase()===q)
-      || list.find(t=>(t.tag||"").toLowerCase()===q)
-      || list.find(t=>t.name.toLowerCase().includes(q))
-      || null;
-}
-
-function renderSide(prefix, team){
-  text(document.getElementById(`name${prefix}`), team ? team.name : `Team ${prefix}`);
-  text(document.getElementById(`tag${prefix}`), team?.tag || "");
-  setLogo(document.getElementById(`logo${prefix}`), team?.logo || "");
-  setPanelGradient(`bg${prefix}`, team?.primary, team?.secondary);
-
-  const host = document.getElementById(`list${prefix}`);
-  host.innerHTML = "";
-  const roster = team?.roster || [];
-  if(!roster.length){
-    const empty = document.createElement("div");
-    empty.className = "player";
-    empty.style.opacity = .65;
-    empty.textContent = "No roster listed";
-    host.appendChild(empty);
-    return;
-  }
-  const pill1 = document.createElement("div"); pill1.className="pill"; pill1.textContent="Captain"; host.appendChild(pill1);
-  const cap = document.createElement("div"); cap.className="player captain"; cap.textContent=roster[0]; host.appendChild(cap);
-  const rest = roster.slice(1);
-  if(rest.length){
-    const pill2 = document.createElement("div"); pill2.className="pill muted"; pill2.textContent="Roster"; host.appendChild(pill2);
-    rest.forEach(p => { const li=document.createElement("div"); li.className="player"; li.textContent=p; host.appendChild(li); });
-  }
-}
-
-/* expose helpers so the module Firebase listener can reuse them */
-window.__overlay = {
-  ensureTeamsLoaded: (async () => {
-    let cache=null;
-    return async function(){ if(!cache) cache = await loadTeamTable(); return cache; };
-  })(),
-  findTeam,
-  renderSide
-};
-
-(async function boot(){
-  try{
-    const teams = await window.__overlay.ensureTeamsLoaded();
-    const teamA = localStorage.getItem("teamA_name") || qs.get("teamA") || "";
-    const teamB = localStorage.getItem("teamB_name") || qs.get("teamB") || "";
-
-    renderSide("A", findTeam(teams, teamA));
-    renderSide("B", findTeam(teams, teamB));
-
-    document.getElementById("loading").classList.add("hide");
-    document.getElementById("content").classList.remove("hide");
-  }catch(e){
-    console.error(e);
-    document.getElementById("loading").textContent = "Error loading rosters — check the sheet link and console.";
-  }
-})();
+  // Boot the static view
+  renderSide("A", MOCK.A);
+  renderSide("B", MOCK.B);
 </script>
 
-<!-- Firebase RTDB listener (matches what the panel writes) -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
-  authDomain: "league7overlay.firebaseapp.com",
-  projectId: "league7overlay",
-  storageBucket: "league7overlay.firebasestorage.app",
-  messagingSenderId: "126648845416",
-  appId: "1:126648845416:web:06be2078b0c95bbb97a7dd",
-  measurementId: "G-QW2NG2BNF9",
-  databaseURL: "https://league7overlay-default-rtdb.firebaseio.com"
-};
-
-const app = initializeApp(firebaseConfig);
-const db  = getDatabase(app);
-
-// Listen for changes published by the panel
-onValue(ref(db, "/overlay/selectedTeams"), async (snap) => {
-  try{
-    const v = snap.val() || {};
-    const teams = await window.__overlay.ensureTeamsLoaded();
-    const A = window.__overlay.findTeam(teams, v.teamA || "");
-    const B = window.__overlay.findTeam(teams, v.teamB || "");
-    window.__overlay.renderSide("A", A);
-    window.__overlay.renderSide("B", B);
-    document.getElementById("loading")?.classList.add("hide");
-    document.getElementById("content")?.classList.remove("hide");
-  }catch(e){ console.error(e); }
-});
-</script>
+<!-- No Firebase. No Sheets. Pure static mock with fallback logo. -->
 </body>
 </html>
