@@ -22,8 +22,8 @@
   .wrap{
     width:min(1100px,100%);
     display:grid;
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-columns: 1fr;   /* single column */
+    grid-template-rows: auto 1fr; /* top = controls, bottom = preview */
     gap:20px;
     height: calc(100vh - 48px);
   }
@@ -168,7 +168,7 @@
             <input id="teamBName" type="text" placeholder="Team B" />
           </div>
 
-        <div class="color-group">
+          <div class="color-group">
             <span class="lbl">Secondary Color</span>
             <input id="B1picker" type="color" value="#333333" />
             <span id="B1sw" class="sw"></span>
@@ -393,16 +393,14 @@ async function loadMatches(){
   sel.innerHTML = `<option value="">Select…</option>` + MATCH_ROWS.map(m=>`<option value="${m.id}">${m.id}</option>`).join('');
 }
 
-/* === NEW: publish selected teams (localStorage + RTDB) === */
+/* === publish selected teams (localStorage + RTDB) === */
 function publishSelectedTeams(teamAName, teamBName){
   const a = teamAName || ($('#teamAName').value || '');
   const b = teamBName || ($('#teamBName').value || '');
 
-  // localStorage fallback (same-machine overlays)
   localStorage.setItem('teamA_name', a);
   localStorage.setItem('teamB_name', b);
 
-  // Realtime Database (multi-producer overlays)
   if (window.__rtdbSet) {
     window.__rtdbSet({ teamA: a, teamB: b, updatedAt: Date.now() })
       .catch(err => console.warn('RTDB publish failed:', err));
@@ -426,9 +424,7 @@ function onMatchPicked(){
   if(hexOK(B.primary)){ $('#B1picker').value = B.primary; $('#B1picker').dispatchEvent(new Event('input')); }
   if(hexOK(B.secondary)){ $('#B2picker').value = B.secondary; $('#B2picker').dispatchEvent(new Event('input')); }
 
-  // NEW: publish right away so roster overlay switches instantly
   publishSelectedTeams(m.teamA, m.teamB);
-
   setStatus(`Loaded from sheet: ${id}`, 'ok');
 }
 
@@ -440,7 +436,6 @@ async function boot(){
     await Promise.all([loadTeamColors(), loadMatches()]);
     $('#matchId').addEventListener('change', onMatchPicked);
 
-    // NEW: manual edits to team name inputs also publish
     let tA, tB;
     $('#teamAName').addEventListener('input', () => {
       clearTimeout(tA); tA = setTimeout(() => publishSelectedTeams(), 150);
@@ -463,10 +458,9 @@ boot();
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
 import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
-/* NEW: Realtime Database (for roster overlay listener) */
 import { getDatabase, ref as rtdbRef, set as rtdbSet } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
 
-/* Your Firebase config */
+/* Firebase config */
 const firebaseConfig = {
   apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
   authDomain: "league7overlay.firebaseapp.com",
@@ -475,7 +469,6 @@ const firebaseConfig = {
   messagingSenderId: "126648845416",
   appId: "1:126648845416:web:06be2078b0c95bbb97a7dd",
   measurementId: "G-QW2NG2BNF9",
-  /* If you created RTDB, include its URL here for best performance */
   databaseURL: "https://league7overlay-default-rtdb.firebaseio.com"
 };
 
@@ -489,7 +482,7 @@ await signInAnonymously(auth);
 const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || "main";
 const OVERLAY_REF = doc(db, "overlays", OVERLAY_ID);
 
-// Expose a helper so non-module script can call it
+// Expose a helper for the non-module script
 window.__rtdbSet = (payload) => rtdbSet(rtdbRef(rtdb, "/overlay/selectedTeams"), payload);
 
 // Live mirror so panel shows overlay totals too
@@ -501,7 +494,7 @@ onSnapshot(OVERLAY_REF, (snap) => {
   const elB = document.getElementById('liveB');
   if (elA) elA.textContent = a;
   if (elB) elB.textContent = b;
-  // keep hidden inputs in sync with overlay doc
+
   const sA = document.getElementById('scoreA');
   const sB = document.getElementById('scoreB');
   if (sA) sA.value = a;
@@ -515,10 +508,8 @@ document.getElementById("btnPush").addEventListener("click", async () => {
     window.setStatus("Pushing…");
     await setDoc(OVERLAY_REF, payload, { merge: true });
 
-    // NEW: also publish the teams so the roster overlay updates everywhere
     await window.__rtdbSet({ teamA: payload.teamAName, teamB: payload.teamBName, updatedAt: Date.now() });
 
-    // Keep localStorage in sync for same-machine overlays
     localStorage.setItem('teamA_name', payload.teamAName || '');
     localStorage.setItem('teamB_name', payload.teamBName || '');
 
