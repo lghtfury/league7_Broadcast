@@ -80,23 +80,60 @@
 
 <script>
 /* ===== Google Sheet (Team Information) =====
-   Cols: A TeamName | B Tag | C Primary | D Secondary | E PlayerCaptain | F..O Player2..Player10
+   A TeamName | B Tag | C Primary | D Secondary | E PlayerCaptain | F..O Player2..Player10
 */
 const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=495267531&single=true&output=csv";
 
 const FALLBACK_LOGO = "./images/teams/missing_logo.png";
 const $ = s => document.querySelector(s);
-const normHex = h => { if(!h) return null; const v=h.trim().replace(/^#/,""); return /^[0-9a-fA-F]{3,8}$/.test(v) ? `#${v}` : null; };
-const setPanelGradient = (id,c1,c2)=>{ const el = typeof id==="string" ? document.getElementById(id) : id; el.style.background = `linear-gradient(135deg, ${normHex(c1)||"#333"}, ${normHex(c2)||"#111"})`; };
-const setLogo = (img,url)=>{ const fallback=()=>{img.src=FALLBACK_LOGO; img.classList.add("visible");}; if(!url||url==="-"||String(url).toLowerCase()==="n/a"){fallback();return;} img.onload=()=>img.classList.add("visible"); img.onerror=fallback; img.src=url; };
+
+/* Slug helpers for local logo files */
+const slug = s => String(s||"")
+  .normalize("NFKD").replace(/[\u0300-\u036f]/g,"")
+  .toLowerCase()
+  .replace(/&/g,"and")
+  .replace(/[^a-z0-9]+/g,"_")
+  .replace(/^_+|_+$/g,"");
+
+function logoCandidates(team){
+  const out = [];
+  // If a URL is ever provided in the sheet, try it first
+  if (team?.logo && !/^(?:-|n\/a)$/i.test(team.logo)) out.push(team.logo.trim());
+  // Prefer name-based file
+  if (team?.name) out.push(`./images/teams/${slug(team.name)}.png`);
+  // Tag-based file as a fallback
+  if (team?.tag) out.push(`./images/teams/${slug(team.tag)}.png`);
+  return out.filter(Boolean);
+}
+
+function setPanelGradient(id,c1,c2){
+  const el = typeof id==="string" ? document.getElementById(id) : id;
+  const normHex = h => { if(!h) return null; const v=h.trim().replace(/^#/,""); return /^[0-9a-fA-F]{3,8}$/.test(v) ? `#${v}` : null; };
+  el.style.background = `linear-gradient(135deg, ${normHex(c1)||"#333"}, ${normHex(c2)||"#111"})`;
+}
+
+/* Always try local images first, then fallback */
+function setLogo(img, team){
+  const tries = [...new Set(logoCandidates(team))];
+  let i = 0;
+  const next = () => {
+    if (i >= tries.length){ img.src = FALLBACK_LOGO; img.classList.add("visible"); return; }
+    img.onload = () => img.classList.add("visible");
+    img.onerror = next;
+    img.src = tries[i++];
+  };
+  next();
+}
 
 function parseCSV(text){
   const rows=[]; let cur=[''], i=0, inQ=false;
   for(const c of text){
     if(c === '"'){ inQ=!inQ; cur[i]+=c; }
     else if(c === ',' && !inQ){ cur.push(''); i++; }
-    else if((c === '\n' || c === '\r') && !inQ){ if(cur.some(x=>x.length)){ rows.push(cur.map(x=>x.replace(/^\s+|\s+$/g,'').replace(/^"|"$/g,'').replace(/""/g,'"')));} cur=['']; i=0; }
-    else { cur[i]+=c; }
+    else if((c === '\n' || c === '\r') && !inQ){
+      if(cur.some(x=>x.length)){ rows.push(cur.map(x=>x.replace(/^\s+|\s+$/g,'').replace(/^"|"$/g,'').replace(/""/g,'"'))); }
+      cur=['']; i=0;
+    } else { cur[i]+=c; }
   }
   if(cur.some(x=>x.length)) rows.push(cur.map(x=>x.replace(/^\s+|\s+$/g,'').replace(/^"|"$/g,'').replace(/""/g,'"')));
   return rows;
@@ -123,27 +160,22 @@ async function loadTeamTableSafe(){
       const primary   = (row[2]||"").trim();
       const secondary = (row[3]||"").trim();
 
-      const captainRaw = (row[4]||"").trim();              // <-- E: PlayerCaptain
+      const captainRaw = (row[4]||"").trim();           // E
       const captain = cleanName(captainRaw);
-
-      // Gather Player2..Player10 (F..O)
       const others = [];
-      for(let i=5;i<=14 && i<row.length;i++){
+      for(let i=5;i<=14 && i<row.length;i++){           // F..O
         const v=(row[i]||"").trim();
         if(v && v.toLowerCase()!=="n/a" && v!=="-") others.push(cleanName(v));
       }
-
-      // Build roster with captain first (or first available if captain missing)
       const roster = [];
       if(captain) roster.push(captain);
       roster.push(...others.filter(Boolean));
-      if(!roster.length){ /* leave empty */ }
 
-      data.push({ name, tag, primary, secondary, logo:"", roster, captain });
+      data.push({ name, tag, primary, secondary, roster });
     }
     TEAMS_CACHE = data;
   }catch(e){
-    console.warn("Sheet load failed; overlay will still run.", e);
+    console.warn("Sheet load failed. Overlay will still run.", e);
     SHEET_ERROR = e;
     TEAMS_CACHE = [];
   }
@@ -166,7 +198,7 @@ function renderSide(prefix, team){
 
   nameEl.textContent = team?.name || `Team ${prefix}`;
   tagEl.textContent  = team?.tag || "";
-  setLogo(logoEl, team?.logo || "");
+  setLogo(logoEl, team || {});
   setPanelGradient(`bg${prefix}`, team?.primary, team?.secondary);
 
   listEl.innerHTML = "";
@@ -176,10 +208,8 @@ function renderSide(prefix, team){
     empty.className="player"; empty.style.opacity=.65; empty.textContent="No roster listed";
     listEl.appendChild(empty); return;
   }
-
   const pill1=document.createElement("div"); pill1.className="pill"; pill1.textContent="Captain"; listEl.appendChild(pill1);
-  const capName = roster[0];
-  const cap=document.createElement("div"); cap.className="player captain"; cap.textContent=capName; listEl.appendChild(cap);
+  const cap=document.createElement("div"); cap.className="player captain"; cap.textContent=roster[0]; listEl.appendChild(cap);
 
   const rest=roster.slice(1);
   if(rest.length){
@@ -194,7 +224,7 @@ renderSide("B", null);
 document.getElementById("loading").classList.add("hide");
 document.getElementById("content").classList.remove("hide");
 
-/* Kick off sheet load (non-blocking) */
+/* Kick off sheet load */
 loadTeamTableSafe();
 
 /* expose helpers for the module block */
@@ -203,7 +233,7 @@ window.findTeam = findTeam;
 window.renderSide = renderSide;
 </script>
 
-<!-- ===== Firebase RTDB listener (drives the selection) ===== -->
+<!-- ===== Firebase RTDB listener ===== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
@@ -233,7 +263,7 @@ onValue(ref(db, "/overlay/selectedTeams"), async (snap) => {
   const teamAName = (v.teamA || localStorage.getItem("teamA_name") || "Team A");
   const teamBName = (v.teamB || localStorage.getItem("teamB_name") || "Team B");
 
-  const list = await loadTeamTableSafe(); // from sheet, includes 'captain' from col E
+  const list = await loadTeamTableSafe();
   const A = findTeam(list, teamAName) || { name: teamAName, roster: [] };
   const B = findTeam(list, teamBName) || { name: teamBName, roster: [] };
 
