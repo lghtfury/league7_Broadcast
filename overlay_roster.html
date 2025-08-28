@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>League 7 — Roster Overlay</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0a0a0c;
+    --panel-pad: 32px;
+    --gap: 28px;
+    --card-radius: 24px;
+    --text: #f4f4f5;
+    --muted: #c9c9cf;
+    --line: rgba(255,255,255,0.10);
+    --capt: #ffd166;
+    --vs-size: 180px;
+    --vs-stroke: 8px;
+  }
+
+  /* Non-transparent base */
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, "IM Fell English SC", serif;
+    overflow: hidden;
+  }
+
+  #overlay {
+    position: relative;
+    width: 1920px; height: 1080px;
+    margin: 0 auto;
+    box-sizing: border-box;
+    background:
+      radial-gradient(1200px 600px at 50% 50%, rgba(255,255,255,0.04), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+  }
+
+  .wrap {
+    position: absolute; inset: 0;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: var(--gap);
+    padding: var(--panel-pad);
+    align-items: stretch;
+  }
+
+  /* Team panels */
+  .team {
+    position: relative;
+    border-radius: var(--card-radius);
+    display: grid;
+    grid-template-rows: auto 1fr;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.45),
+                inset 0 0 0 1px rgba(255,255,255,0.06);
+    isolation: isolate;
+  }
+  .team-bg { position:absolute; inset:0; background:linear-gradient(135deg,#333,#111); z-index:0; }
+  .team-sheen {
+    position:absolute; inset:-20%;
+    background: conic-gradient(from 0deg, rgba(255,255,255,0.12), transparent 45%, rgba(255,255,255,0.12), transparent 70%);
+    mix-blend-mode: overlay; filter: blur(40px); opacity:.35; z-index:0;
+    animation: spin 18s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg) } }
+
+  .head {
+    position:relative; z-index:1;
+    display:grid; grid-template-columns:96px 1fr; gap:20px; align-items:center;
+    padding:22px 26px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.35), rgba(0,0,0,0));
+    border-bottom:1px solid var(--line);
+  }
+  .logo-box {
+    width:96px; height:96px; border-radius:16px; overflow:hidden;
+    display:grid; place-items:center; background:rgba(0,0,0,0.35);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+  }
+  .logo { width:86px; height:86px; object-fit:contain; display:none; }
+  .logo.visible { display:block; }
+
+  .meta { display:grid; gap:8px; min-width:0; }
+  .team-name {
+    font-family:"IM Fell English SC", serif;
+    font-size:44px; line-height:1;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    text-shadow: 0 2px 0 rgba(0,0,0,0.4);
+  }
+  .tag { font-weight:600; font-size:14px; letter-spacing:.4px; text-transform:uppercase; color:var(--muted); }
+
+  .roster {
+    position:relative; z-index:1;
+    display:grid; gap:10px; padding:22px 26px 28px;
+  }
+
+  .pill {
+    display:inline-block; padding:6px 10px;
+    border-radius:999px; border:1px solid rgba(255,255,255,0.18);
+    background:rgba(0,0,0,0.25); font-size:12px; letter-spacing:.4px; text-transform:uppercase;
+    color:var(--capt); margin-bottom:8px;
+  }
+  .pill.muted { color: var(--muted); }
+
+  .player {
+    padding:10px 12px; border-radius:12px;
+    background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.10);
+    font-size:20px; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  }
+  .captain {
+    border-color: rgba(255,209,102,0.55); box-shadow: 0 8px 28px rgba(255,209,102,0.18);
+  }
+
+  /* Center VS */
+  .center { width:280px; display:grid; place-items:center; position:relative; }
+  .vs-wrap { position:relative; width:var(--vs-size); height:var(--vs-size); display:grid; place-items:center;
+             filter: drop-shadow(0 12px 26px rgba(0,0,0,0.55)); }
+  .vs-ring {
+    position:absolute; inset:0; border-radius:50%;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(255,255,255,0.25), rgba(255,255,255,0) 55%),
+      conic-gradient(from 0deg, rgba(255,255,255,0.25), rgba(255,255,255,0) 40%, rgba(255,255,255,0.25), rgba(255,255,255,0) 70%);
+    mask: radial-gradient(circle, transparent calc(50% - var(--vs-stroke)), black calc(50% - var(--vs-stroke)));
+    animation: pulse 2.6s ease-in-out infinite; opacity:.75;
+  }
+  @keyframes pulse { 0%,100%{transform:scale(1);opacity:.75} 50%{transform:scale(1.04);opacity:1} }
+  .vs { font-family:"IM Fell English SC", serif; font-size:86px; letter-spacing:2px;
+        background:linear-gradient(180deg,#fff,#d8d8d8); -webkit-background-clip:text; background-clip:text; color:transparent;
+        text-shadow:0 3px 0 rgba(0,0,0,0.45); }
+
+  .status { position:absolute; inset:0; display:grid; place-items:center; color:var(--muted); }
+  .hide { display:none !important; }
+
+  @media (max-width:1919px),(max-height:1079px){
+    #overlay{ width:100vw; height:100vh; }
+    .team-name{ font-size:clamp(28px,4vw,44px); }
+    .player{ font-size:clamp(16px,1.9vw,20px); }
+    .vs{ font-size:clamp(64px,7vw,86px); }
+  }
+</style>
+</head>
+<body>
+<div id="overlay">
+  <div id="loading" class="status">Loading rosters…</div>
+
+  <div id="content" class="wrap hide">
+    <!-- Team A -->
+    <section class="team" id="A">
+      <div class="team-bg" id="bgA"></div>
+      <div class="team-sheen"></div>
+      <header class="head">
+        <div class="logo-box"><img id="logoA" class="logo" alt="Team A Logo"></div>
+        <div class="meta">
+          <div class="team-name" id="nameA">Team A</div>
+          <div class="tag" id="tagA"></div>
+        </div>
+      </header>
+      <div class="roster" id="listA"></div>
+    </section>
+
+    <!-- VS -->
+    <div class="center">
+      <div class="vs-wrap"><div class="vs-ring"></div><div class="vs">VS</div></div>
+    </div>
+
+    <!-- Team B -->
+    <section class="team" id="B">
+      <div class="team-bg" id="bgB"></div>
+      <div class="team-sheen"></div>
+      <header class="head">
+        <div class="logo-box"><img id="logoB" class="logo" alt="Team B Logo"></div>
+        <div class="meta">
+          <div class="team-name" id="nameB">Team B</div>
+          <div class="tag" id="tagB"></div>
+        </div>
+      </header>
+      <div class="roster" id="listB"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+/** === CONFIG ===
+ * Sheet: Team Information (your link, tab gid=495267531)
+ * Columns by LETTER (exactly like your screenshot):
+ *  A TeamName | B TeamT | C PrimaryColor | D SecondaryColor | E PlayerCaptain | F..N Player2..Player10
+ */
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pubhtml?gid=495267531&single=true";
+
+/** Selected teams source priority:
+ * 1) Firebase Realtime DB  /overlay/selectedTeams  -> { teamA, teamB }
+ * 2) localStorage teamA_name / teamB_name
+ * 3) URL ?teamA=&teamB=
+ */
+const $ = s => document.querySelector(s);
+const text = (el, v="") => el.textContent = v;
+
+function qsParam() {
+  const p = new URLSearchParams(location.search);
+  return { teamA: (p.get("teamA") || "").trim(), teamB: (p.get("teamB") || "").trim() };
+}
+
+function normHex(h) {
+  if (!h) return null;
+  const v = h.trim().replace(/^#/, "");
+  return /^[0-9a-fA-F]{3,8}$/.test(v) ? `#${v}` : null;
+}
+
+function setPanelGradient(id, c1, c2) {
+  const el = id.startsWith("#") ? $(id) : $(`#${id}`);
+  const a = normHex(c1) || "#333";
+  const b = normHex(c2) || "#111";
+  el.style.background = `linear-gradient(135deg, ${a}, ${b})`;
+}
+
+function setLogo(img, url) {
+  const el = typeof img === "string" ? $(img) : img;
+  if (!url || url === "-" || url.toLowerCase() === "n/a") {
+    el.classList.remove("visible");
+    el.removeAttribute("src");
+    return;
+  }
+  el.src = url;
+  el.onload = () => el.classList.add("visible");
+  el.onerror = () => el.classList.remove("visible");
+}
+
+/* Pull selected teams from Firebase / localStorage / URL */
+async function getSelectedTeams() {
+  // Firebase (if SDK already on page & configured globally as window.FIREBASE_CONFIG)
+  try {
+    if (window.firebase && window.firebase.apps && window.firebase.apps.length === 0 && window.FIREBASE_CONFIG) {
+      firebase.initializeApp(window.FIREBASE_CONFIG);
+    }
+    if (window.firebase && firebase.database) {
+      const snap = await firebase.database().ref("/overlay/selectedTeams").get();
+      const v = snap && snap.val ? snap.val() : null;
+      if (v && (v.teamA || v.teamB)) return { teamA: (v.teamA || "").trim(), teamB: (v.teamB || "").trim(), source:"firebase" };
+    }
+  } catch(e){ console.warn("Firebase read skipped:", e); }
+
+  // localStorage
+  const la = (localStorage.getItem("teamA_name") || "").trim();
+  const lb = (localStorage.getItem("teamB_name") || "").trim();
+  if (la || lb) return { teamA: la, teamB: lb, source:"localStorage" };
+
+  // URL
+  const qp = qsParam();
+  if (qp.teamA || qp.teamB) return { ...qp, source:"query" };
+
+  return { teamA:"", teamB:"", source:"none" };
+}
+
+/* Fetch & parse your pubhtml table */
+async function fetchTeamTable() {
+  const res = await fetch(SHEET_URL, { mode:"cors", credentials:"omit" });
+  const html = await res.text();
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const table = doc.querySelector("table");
+  if (!table) throw new Error("Team sheet table not found.");
+
+  const rows = Array.from(table.querySelectorAll("tr")).map(tr =>
+    Array.from(tr.querySelectorAll("th,td")).map(td => td.textContent.trim())
+  );
+  if (!rows.length) throw new Error("Team sheet rows not found.");
+
+  // Expect header in row 1 (index 0)
+  // Use fixed column LETTERS per your spec:
+  // 0:A TeamName, 1:B TeamT, 2:C PrimaryColor, 3:D SecondaryColor, 4:E Captain, 5..14:F..O? (but your shot shows F..N => 5..13)
+  const data = [];
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    if (!row || !row.length) continue;
+    const name = row[0] || "";
+    if (!name) continue;
+
+    const tag = row[1] || "";
+    const primary = row[2] || "";
+    const secondary = row[3] || "";
+
+    // Optional "Logo" column if added later — try to detect by header text
+    let logoUrl = "";
+    if (rows[0]) {
+      const hdr = rows[0].map(h => h.toLowerCase());
+      const logoIdx = hdr.findIndex(h => ["logo","team logo","logo url"].includes(h));
+      if (logoIdx >= 0) logoUrl = row[logoIdx] || "";
+    }
+
+    // E..N => indices 4..13 (Captain then Players)
+    const roster = [];
+    for (let i = 4; i <= 13 && i < row.length; i++) {
+      const v = (row[i] || "").trim();
+      if (v && v.toLowerCase() !== "n/a" && v !== "-") roster.push(v);
+    }
+
+    data.push({ name, tag, primary, secondary, logo: logoUrl, roster });
+  }
+  return data;
+}
+
+function findTeam(list, query) {
+  if (!query) return null;
+  const q = query.toLowerCase();
+  // exact TeamName
+  let t = list.find(t => t.name.toLowerCase() === q);
+  if (t) return t;
+  // exact tag (B)
+  t = list.find(t => (t.tag || "").toLowerCase() === q);
+  if (t) return t;
+  // contains
+  return list.find(t => t.name.toLowerCase().includes(q)) || null;
+}
+
+function renderSide(prefix, team) {
+  text($(`#name${prefix}`), team ? team.name : `Team ${prefix}`);
+  text($(`#tag${prefix}`), team && team.tag ? team.tag : "");
+
+  // Optional logo
+  setLogo($(`#logo${prefix}`), team ? team.logo : "");
+
+  // Gradient from C→D
+  setPanelGradient(`bg${prefix}`, team ? team.primary : "", team ? team.secondary : "");
+
+  const list = $(`#list${prefix}`);
+  list.innerHTML = "";
+
+  const roster = (team && Array.isArray(team.roster)) ? team.roster.slice(0, 10) : [];
+  if (!roster.length) {
+    const empty = document.createElement("div");
+    empty.className = "player";
+    empty.style.opacity = .65;
+    empty.textContent = "No roster listed";
+    list.appendChild(empty);
+    return;
+  }
+
+  // Captain (E)
+  const pillC = document.createElement("div");
+  pillC.className = "pill";
+  pillC.textContent = "Captain";
+  list.appendChild(pillC);
+
+  const cap = document.createElement("div");
+  cap.className = "player captain";
+  cap.textContent = roster[0];
+  list.appendChild(cap);
+
+  // Others (F..N)
+  const others = roster.slice(1);
+  if (others.length) {
+    const pill = document.createElement("div");
+    pill.className = "pill muted";
+    pill.textContent = "Roster";
+    list.appendChild(pill);
+
+    others.forEach(p => {
+      const li = document.createElement("div");
+      li.className = "player";
+      li.textContent = p;
+      list.appendChild(li);
+    });
+  }
+}
+
+(async function boot(){
+  try {
+    const sel = await getSelectedTeams();  // {teamA, teamB}
+    const teams = await fetchTeamTable();
+
+    const A = findTeam(teams, sel.teamA);
+    const B = findTeam(teams, sel.teamB);
+
+    renderSide("A", A);
+    renderSide("B", B);
+
+    $("#loading").classList.add("hide");
+    $("#content").classList.remove("hide");
+
+    // Live updates from Firebase panel (optional)
+    if (window.firebase && firebase.database) {
+      firebase.database().ref("/overlay/selectedTeams").on("value", snap => {
+        const v = snap && snap.val ? snap.val() : null;
+        if (!v) return;
+        const A2 = findTeam(teams, (v.teamA || "")) || A;
+        const B2 = findTeam(teams, (v.teamB || "")) || B;
+        renderSide("A", A2);
+        renderSide("B", B2);
+      });
+    } else {
+      // Or via localStorage (if your panel writes there)
+      window.addEventListener("storage", (e) => {
+        if (e.key === "teamA_name" || e.key === "teamB_name") {
+          const A2 = findTeam(teams, localStorage.getItem("teamA_name") || "") || A;
+          const B2 = findTeam(teams, localStorage.getItem("teamB_name") || "") || B;
+          renderSide("A", A2);
+          renderSide("B", B2);
+        }
+      });
+    }
+  } catch(err) {
+    console.error(err);
+    $("#loading").textContent = "Error loading rosters — check the sheet link and console.";
+  }
+})();
+</script>
+</body>
+</html>
