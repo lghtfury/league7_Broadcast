@@ -2,180 +2,154 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>League 7 — Overlay (Scaled Stage)</title>
+<title>League 7 — Visual Overlay (No Data)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Inter:wght@600;800&display=swap" rel="stylesheet">
 <style>
-  /* ----- Page base (no scrollbars, center the overlay) ----- */
-  html, body {
-    margin: 0; padding: 0;
-    width: 100%; height: 100%;
-    background: transparent;
-    overflow: hidden;
-    font-family: 'IM Fell English SC', serif;
-  }
-  body {
-    display: grid;
-    place-items: center; /* center the scaled stage in the page/OBS source */
-    background: transparent;
-  }
+  /* ===== Page & 1920×1080 stage (scaled uniformly) ===== */
+  html,body{margin:0;padding:0;width:100%;height:100%;background:transparent;overflow:hidden}
+  body{display:grid;place-items:center}
+  .fit{position:relative;width:100vw;height:100vh;overflow:hidden;background:transparent}
+  #stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:top left;background:transparent;font-family:Inter,system-ui,sans-serif}
 
-  /* ----- Scaler wrapper (centers and holds the scaled stage) ----- */
-  .fit {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    background: transparent;
-  }
+  /* ===== Top layout ===== */
+  .topbar{position:absolute;left:0;top:36px;width:100%;height:150px;display:grid;grid-template-columns:1fr 260px 1fr;align-items:end}
 
-  /* ----- Fixed stage (design space) ----- */
-  #stage {
-    position: absolute;
-    left: 0; top: 0;
-    width: 1920px;
-    height: 1080px;
-    transform-origin: top left; /* important: scale from (0,0) */
-    background: transparent;
-  }
+  /* Snitch (simple ornament) */
+  .snitch{position:relative;width:180px;height:180px;margin:0 auto;filter:drop-shadow(0 10px 20px rgba(0,0,0,.45))}
+  .snitch .ring{position:absolute;inset:0;border-radius:50%;
+    background:radial-gradient(circle, #ffd76a 0%, #f6b017 62%, #a56a00 100%);
+    box-shadow:inset 0 0 0 10px rgba(255,231,132,.65)}
+  .snitch .bar{position:absolute;left:15px;right:15px;bottom:58px;height:6px;background:#ffde75;border-radius:4px}
 
-  /* Background art — replace "overlay.png" with your path if needed */
-  #bg {
-    position: absolute;
-    inset: 0;
-    width: 1920px;
-    height: 1080px;
-    object-fit: cover;
-    pointer-events: none;
-    z-index: 0;
+  /* ===== Ribbons with animated shine ===== */
+  :root{
+    /* Defaults; JS will update these */
+    --A1:#2a7bd8; --A2:#1763b6; --Atext:#fff;
+    --B1:#d82323; --B2:#b61212; --Btext:#fff;
   }
+  .ribbon{position:relative;height:86px;border-radius:14px 14px 10px 10px;overflow:visible;box-shadow:0 12px 28px rgba(0,0,0,.45)}
+  .ribbon:before,.ribbon:after{
+    content:""; position:absolute; top:18px; width:26px; height:50px; border-radius:4px; filter:brightness(.95)
+  }
+  .ribbon.left:before{left:-18px; transform:skewX(-12deg)}
+  .ribbon.left:after {left:-6px;  transform:skewX(-12deg)}
+  .ribbon.right:before{right:-18px; transform:skewX(12deg)}
+  .ribbon.right:after {right:-6px;  transform:skewX(12deg)}
 
-  /* ----- Name/Score boxes (ABSOLUTE in pixel space) ----- */
-  /* tweak these four blocks to match the gold plates/tabs on your art */
-  .box {
-    position: absolute;
-    display: grid;
-    place-items: center;
-    text-align: center;
-    color: white;
-    /* optional debug outline while aligning:
-       outline: 1px dashed rgba(255,255,255,.35);
-    */
+  @keyframes shine { 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
+  .ribbon{background-size:200% 100%; animation:shine 6s linear infinite}
+
+  .ribbon.left{
+    background:linear-gradient(90deg, var(--A2), var(--A1) 35%, var(--A2) 70%);
+  }
+  .ribbon.left:before,.ribbon.left:after{
+    background:linear-gradient(180deg, var(--A2), var(--A1));
+  }
+  .ribbon.right{
+    background:linear-gradient(90deg, var(--B2), var(--B1) 35%, var(--B2) 70%);
+  }
+  .ribbon.right:before,.ribbon.right:after{
+    background:linear-gradient(180deg, var(--B2), var(--B1));
   }
 
-  /* Team names on gold name plates */
-  #nameA, #nameB {
-    font-weight: bold;
-    font-size: 36px;
-    color: #ffffff;
-    text-shadow: 0 2px 4px rgba(0,0,0,.6);
-    padding: 0 8px;           /* small safety padding */
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  /* Gold plates & score tabs */
+  .plate{
+    position:absolute; left:50%; bottom:-22px; transform:translateX(-50%);
+    width:520px; height:60px; border-radius:10px; display:grid; place-items:center;
+    background:linear-gradient(90deg,#8b6a20,#f6e18a 30%,#b48212 60%,#fff0a9 85%,#7a5a18);
+    box-shadow:0 10px 22px rgba(0,0,0,.35), inset 0 0 0 1px rgba(0,0,0,.25)
   }
+  .plate:before,.plate:after{content:""; position:absolute; top:26px; width:9px; height:9px; border-radius:50%; background:#caa23b; box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+  .plate:before{left:16px} .plate:after{right:16px}
 
-  /* Scores on small gold tabs */
-  #scoreA, #scoreB {
-    font-weight: 900;
-    font-size: 56px;
-    color: #111;              /* black-on-gold look */
-    text-shadow: 0 1px 2px rgba(0,0,0,.35);
+  .teamName{
+    font-family:"IM Fell English SC", serif; font-size:40px; letter-spacing:1px;
+    text-shadow:0 2px 0 rgba(0,0,0,.4); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    max-width:480px; padding:0 8px;
   }
+  #nameA{ color:var(--Atext) }
+  #nameB{ color:var(--Btext) }
 
-  /* ---- Pixel positions (measured for a typical “VS” bar) ----
-     You can nudge these numbers; they’ll remain locked after scaling.
-     X = left, Y = top, W = width, H = height (all in pixels).
-     These defaults mirror a common layout and should be close. */
-  /* Left team name plate */
-  #boxNameA { left: 460px; top: 35px; width: 540px; height: 56px; }
-  /* Left score tab */
-  #boxScoreA { left: 505px; top: 90px; width: 180px; height: 44px; }
-
-  /* Right team name plate */
-  #boxNameB { left: 920px; top: 35px; width: 540px; height: 56px; } /* (or use right:460px if you prefer) */
-  /* Right score tab */
-  #boxScoreB { left: 1235px; top: 88px; width: 180px; height: 44px; }
-
-  /* optional: make the whole thing mouse-transparent for OBS */
-  .passthrough { pointer-events: none; }
+  .scoreTab{
+    position:absolute; bottom:-60px; width:180px; height:46px; border-radius:8px;
+    background:linear-gradient(90deg,#8b6a20,#f6e18a 35%,#b48212 70%,#fff0a9);
+    box-shadow:0 10px 22px rgba(0,0,0,.35), inset 0 0 0 1px rgba(0,0,0,.25);
+    display:grid; place-items:center;
+  }
+  .ribbon.left .scoreTab{ left:70px }
+  .ribbon.right .scoreTab{ right:70px }
+  .score{font-weight:900; font-size:52px; color:#111; text-shadow:0 1px 2px rgba(0,0,0,.25)}
 </style>
 </head>
 <body>
   <div class="fit">
-    <!-- Fixed 1920×1080 stage (scaled as one unit) -->
-    <div id="stage" class="passthrough">
-      <img id="bg" src="overlay.png" alt="Overlay art" />
+    <div id="stage">
+      <div class="topbar">
+        <!-- Left banner -->
+        <div class="ribbon left">
+          <div class="plate"><div id="nameA" class="teamName">Team A</div></div>
+          <div class="scoreTab"><div id="scoreA" class="score">0</div></div>
+        </div>
 
-      <!-- Left team name -->
-      <div id="boxNameA" class="box"><div id="nameA">Team A</div></div>
-      <!-- Left score -->
-      <div id="boxScoreA" class="box"><div id="scoreA">0</div></div>
+        <!-- Center ornament -->
+        <div class="snitch" aria-hidden="true">
+          <div class="ring"></div><div class="bar"></div>
+        </div>
 
-      <!-- Right team name -->
-      <div id="boxNameB" class="box"><div id="nameB">Team B</div></div>
-      <!-- Right score -->
-      <div id="boxScoreB" class="box"><div id="scoreB">0</div></div>
+        <!-- Right banner -->
+        <div class="ribbon right">
+          <div class="plate"><div id="nameB" class="teamName">Team B</div></div>
+          <div class="scoreTab"><div id="scoreB" class="score">0</div></div>
+        </div>
+      </div>
     </div>
   </div>
 
 <script>
-/* ===== 1) Uniformly scale the 1920×1080 stage to fit the window/OBS ===== */
-function fitStage() {
+/* Scale the 1920×1080 stage uniformly (so elements never drift) */
+function fitStage(){
   const stage = document.getElementById('stage');
   const ww = window.innerWidth, wh = window.innerHeight;
-  const scale = Math.min(ww / 1920, wh / 1080);
-  stage.style.transform = `scale(${scale})`;
-
-  // center the scaled stage
-  const sw = 1920 * scale, sh = 1080 * scale;
-  stage.style.left = `${(ww - sw) / 2}px`;
-  stage.style.top  = `${(wh - sh) / 2}px`;
+  const s = Math.min(ww/1920, wh/1080);
+  stage.style.transform = `scale(${s})`;
+  stage.style.left = `${(ww - 1920*s)/2}px`;
+  stage.style.top  = `${(wh - 1080*s)/2}px`;
 }
-window.addEventListener('resize', fitStage);
-fitStage();
+addEventListener('resize', fitStage); fitStage();
 
-/* ===== 2) Auto-shrink long team names (keeps within their box) ===== */
-function autoshrink(el, maxPx, minPx) {
-  const parent = el.parentElement;
-  const limit = parent.clientWidth - 10; // small safety padding
-  el.style.fontSize = maxPx + 'px';
-
-  // shrink until it fits or hit min
-  while (el.scrollWidth > parent.clientWidth && parseInt(el.style.fontSize, 10) > minPx) {
-    el.style.fontSize = (parseInt(el.style.fontSize, 10) - 1) + 'px';
-  }
+/* Helpers to try different team colors visually (no data hookups) */
+function safeHex(h){
+  if(!h) return null;
+  let v = String(h).trim();
+  if(!v.startsWith('#')) v = '#'+v;
+  return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : null;
 }
-
-function render(names = {A:'Team A', B:'Team B'}, scores = {A:0, B:0}) {
-  const nameA = document.getElementById('nameA');
-  const nameB = document.getElementById('nameB');
-  const scoreA = document.getElementById('scoreA');
-  const scoreB = document.getElementById('scoreB');
-
-  nameA.textContent = names.A || 'Team A';
-  nameB.textContent = names.B || 'Team B';
-  scoreA.textContent = scores.A ?? 0;
-  scoreB.textContent = scores.B ?? 0;
-
-  // shrink names if needed (36 → min 22)
-  autoshrink(nameA, 36, 22);
-  autoshrink(nameB, 36, 22);
+function luminance(hex){
+  const v = hex.replace('#','');
+  const p = v.length===3 ? v.split('').map(c=>parseInt(c+c,16)) :
+            [parseInt(v.slice(0,2),16),parseInt(v.slice(2,4),16),parseInt(v.slice(4,6),16)];
+  const [r,g,b] = p.map(c=>{c/=255; return c<=0.03928? c/12.92 : Math.pow((c+0.055)/1.055, 2.4)});
+  return 0.2126*r + 0.7152*g + 0.0722*b;
 }
+function setTeamColors(side, primary, secondary){
+  const P = safeHex(primary) || '#555555';
+  const S = safeHex(secondary) || '#333333';
+  const dark = luminance(P) < luminance(S) ? P : S;
+  const light = dark===P ? S : P;
+  const root = document.documentElement;
+  if(side==='A'){ root.style.setProperty('--A1', P); root.style.setProperty('--A2', S); root.style.setProperty('--Atext', light); }
+  else         { root.style.setProperty('--B1', P); root.style.setProperty('--B2', S); root.style.setProperty('--Btext', light); }
+}
+/* Optional: quick demo colors — change these to test visuals */
+setTeamColors('A', '#0a66ff', '#053b9a');   // left banner colors
+setTeamColors('B', '#ff3232', '#b31212');   // right banner colors
 
-/* Demo placeholders — remove or replace with your live data pipe later */
-render({A:'Team A', B:'Team B'}, {A:0, B:0});
-
-/* ===== 3) (Optional) Live hooks (leave commented until you’re ready) =====
-   Example Firestore read:
-   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-   import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
-   // ...init...
-   onSnapshot(doc(db, "overlays", "main"), (snap) => {
-     const d = snap.data() || {};
-     render({A: d.teamAName, B: d.teamBName}, {A: d.mapScoreA, B: d.mapScoreB});
-   });
-*/
+/* You can also quickly change names/scores here if you want */
+document.getElementById('nameA').textContent = 'Team A';
+document.getElementById('nameB').textContent = 'Team B';
+document.getElementById('scoreA').textContent = '0';
+document.getElementById('scoreB').textContent = '0';
 </script>
 </body>
 </html>
