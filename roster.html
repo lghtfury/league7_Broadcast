@@ -79,7 +79,9 @@
 </div>
 
 <script>
-/* ===== Google Sheet (Team Information) — non-blocking ===== */
+/* ===== Google Sheet (Team Information) =====
+   Cols: A TeamName | B Tag | C Primary | D Secondary | E PlayerCaptain | F..O Player2..Player10
+*/
 const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=495267531&single=true&output=csv";
 
 const FALLBACK_LOGO = "./images/teams/missing_logo.png";
@@ -100,8 +102,13 @@ function parseCSV(text){
   return rows;
 }
 
-let TEAMS_CACHE = null;   // null = not loaded, [] = loaded (maybe empty)
+let TEAMS_CACHE = null;
 let SHEET_ERROR = null;
+
+function cleanName(s){
+  if(!s) return "";
+  return String(s).replace(/\s*(?:\(\s*C\s*\)|\[\s*C\s*\]|-\s*C|\*|captain:?)/ig,'').trim();
+}
 
 async function loadTeamTableSafe(){
   if(TEAMS_CACHE || SHEET_ERROR) return TEAMS_CACHE || [];
@@ -115,19 +122,30 @@ async function loadTeamTableSafe(){
       const tag  = (row[1]||"").trim();
       const primary   = (row[2]||"").trim();
       const secondary = (row[3]||"").trim();
-      const logo      = (row[4]||"").trim();
-      const roster=[];
+
+      const captainRaw = (row[4]||"").trim();              // <-- E: PlayerCaptain
+      const captain = cleanName(captainRaw);
+
+      // Gather Player2..Player10 (F..O)
+      const others = [];
       for(let i=5;i<=14 && i<row.length;i++){
         const v=(row[i]||"").trim();
-        if(v && v.toLowerCase()!=="n/a" && v!=="-") roster.push(v);
+        if(v && v.toLowerCase()!=="n/a" && v!=="-") others.push(cleanName(v));
       }
-      data.push({ name, tag, primary, secondary, logo, roster });
+
+      // Build roster with captain first (or first available if captain missing)
+      const roster = [];
+      if(captain) roster.push(captain);
+      roster.push(...others.filter(Boolean));
+      if(!roster.length){ /* leave empty */ }
+
+      data.push({ name, tag, primary, secondary, logo:"", roster, captain });
     }
     TEAMS_CACHE = data;
   }catch(e){
     console.warn("Sheet load failed; overlay will still run.", e);
     SHEET_ERROR = e;
-    TEAMS_CACHE = []; // keep going
+    TEAMS_CACHE = [];
   }
   return TEAMS_CACHE;
 }
@@ -152,14 +170,17 @@ function renderSide(prefix, team){
   setPanelGradient(`bg${prefix}`, team?.primary, team?.secondary);
 
   listEl.innerHTML = "";
-  const roster = team?.roster || [];
+  const roster = Array.isArray(team?.roster) ? team.roster.filter(Boolean) : [];
   if(!roster.length){
     const empty=document.createElement("div");
     empty.className="player"; empty.style.opacity=.65; empty.textContent="No roster listed";
     listEl.appendChild(empty); return;
   }
+
   const pill1=document.createElement("div"); pill1.className="pill"; pill1.textContent="Captain"; listEl.appendChild(pill1);
-  const cap=document.createElement("div"); cap.className="player captain"; cap.textContent=roster[0]; listEl.appendChild(cap);
+  const capName = roster[0];
+  const cap=document.createElement("div"); cap.className="player captain"; cap.textContent=capName; listEl.appendChild(cap);
+
   const rest=roster.slice(1);
   if(rest.length){
     const pill2=document.createElement("div"); pill2.className="pill muted"; pill2.textContent="Roster"; listEl.appendChild(pill2);
@@ -167,14 +188,19 @@ function renderSide(prefix, team){
   }
 }
 
-/* Draw immediately with placeholders so nothing looks broken */
+/* Draw placeholders immediately */
 renderSide("A", null);
 renderSide("B", null);
 document.getElementById("loading").classList.add("hide");
 document.getElementById("content").classList.remove("hide");
 
-/* Try loading the sheet in the background (non-blocking) */
+/* Kick off sheet load (non-blocking) */
 loadTeamTableSafe();
+
+/* expose helpers for the module block */
+window.loadTeamTableSafe = loadTeamTableSafe;
+window.findTeam = findTeam;
+window.renderSide = renderSide;
 </script>
 
 <!-- ===== Firebase RTDB listener (drives the selection) ===== -->
@@ -195,23 +221,19 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-/* Optional if your RTDB rules are public-read; safe to leave in */
-try { await signInAnonymously(getAuth(app)); } catch(e){ /* ignore */ }
-
+try { await signInAnonymously(getAuth(app)); } catch(e) { /* ok if rules allow read */ }
 const db = getDatabase(app);
 
-/* Helper exposed in the other <script> block */
 const loadTeamTableSafe = window.loadTeamTableSafe || (async()=>[]);
 const findTeam = window.findTeam || (()=>null);
 const renderSide = window.renderSide || (()=>{});
 
-/* Update both sides when Control Panel pushes new names */
 onValue(ref(db, "/overlay/selectedTeams"), async (snap) => {
   const v = snap.val() || {};
   const teamAName = (v.teamA || localStorage.getItem("teamA_name") || "Team A");
   const teamBName = (v.teamB || localStorage.getItem("teamB_name") || "Team B");
 
-  const list = await loadTeamTableSafe(); // might be [], that’s OK
+  const list = await loadTeamTableSafe(); // from sheet, includes 'captain' from col E
   const A = findTeam(list, teamAName) || { name: teamAName, roster: [] };
   const B = findTeam(list, teamBName) || { name: teamBName, roster: [] };
 
