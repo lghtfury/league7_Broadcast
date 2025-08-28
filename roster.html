@@ -80,20 +80,17 @@
 
 <script>
 /* === CONFIG ===
- * Team Information (rosters/colors) CSV — NOT the matches doc.
- * Matches are selected in the panel and pushed to Firestore.
+ * CSV endpoint for Team Information tab (stable vs. pubhtml):
  */
-const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRQcWpAfxgj9lOQKc2JTkVsKto2BeG1Ir-VH-ZwLwfiTUVgOg64tBgV6-9uXwg4PNWUzKFxyMOvu9Sw/pub?gid=0&single=true&output=csv";
+const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=495267531&single=true&output=csv";
 
 const $ = s => document.querySelector(s);
+const text = (el, v="") => el.textContent = v;
 const qs = new URLSearchParams(location.search);
-const text = (el, v="") => { if (el) el.textContent = v; };
-
 const normHex = h => { if(!h) return null; const v = h.trim().replace(/^#/,""); return /^[0-9a-fA-F]{3,8}$/.test(v) ? `#${v}` : null; };
 const setPanelGradient = (id,c1,c2)=>{ const el = typeof id==="string" ? document.getElementById(id) : id; el.style.background = `linear-gradient(135deg, ${normHex(c1)||"#333"}, ${normHex(c2)||"#111"})`; };
-const setLogo = (img,url)=>{ if(!img) return; if(!url || url==="-" || url.toLowerCase()==="n/a"){ img.classList.remove("visible"); img.removeAttribute("src"); return; } img.src=url; img.onload=()=>img.classList.add("visible"); img.onerror=()=>img.classList.remove("visible"); };
+const setLogo = (img,url)=>{ if(!url || url==="-" || url.toLowerCase()==="n/a"){ img.classList.remove("visible"); img.removeAttribute("src"); return; } img.src=url; img.onload=()=>img.classList.add("visible"); img.onerror=()=>img.classList.remove("visible"); };
 
-/* ---------- CSV parsing ---------- */
 function parseCSV(text){
   const rows=[]; let cur=[''], i=0, inQ=false;
   for(const c of text){
@@ -106,15 +103,6 @@ function parseCSV(text){
   }
   if(cur.some(x=>x.length)) rows.push(cur.map(x=>x.replace(/^\s+|\s+$/g,'').replace(/^"|"$/g,'').replace(/""/g,'"')));
   return rows;
-}
-
-/* ---------- Team data (from Team Information CSV) ---------- */
-function snakeKey(name){
-  return (name||"")
-    .toLowerCase()
-    .replace(/[\u2019'’`"]/g,"")      // remove quotes/apostrophes
-    .replace(/[^a-z0-9]+/g,"_")      // spaces/punct -> underscores
-    .replace(/^_+|_+$/g,"");         // trim underscores
 }
 
 async function loadTeamTable(){
@@ -132,7 +120,7 @@ async function loadTeamTable(){
       const v=(row[i]||"").trim();
       if(v && v.toLowerCase()!=="n/a" && v!=="-") roster.push(v);
     }
-    data.push({ name, tag, primary, secondary, roster, _snake: snakeKey(name) });
+    data.push({ name, tag, primary, secondary, roster });
   }
   return data;
 }
@@ -146,49 +134,12 @@ function findTeam(list, query){
       || null;
 }
 
-/* ---------- Logos (tag.png -> snake_case(name).png -> fallback) ---------- */
-const LOGO_BASE = "https://lghtfury.github.io/league7_Broadcast/images/teams/"; // your folder
-const FALLBACK_LOGO = LOGO_BASE + "missing_logo.png";
-
-function candidateLogoUrls(team){
-  if(!team) return [FALLBACK_LOGO];
-  const keys = [];
-  if (team.tag && team.tag.trim()) keys.push(team.tag.trim().toLowerCase());
-  if (team._snake) keys.push(team._snake);
-  return keys.map(k => `${LOGO_BASE}${k}.png`).concat(FALLBACK_LOGO);
-}
-
-function resolveLogoUrl(team){
-  const tries = candidateLogoUrls(team);
-  return new Promise(res=>{
-    const tryNext = (i) => {
-      const url = tries[i];
-      if (!url) return res(FALLBACK_LOGO);
-      const img = new Image();
-      img.onload  = () => res(url);
-      img.onerror = () => tryNext(i+1);
-      img.src = url;
-    };
-    tryNext(0);
-  });
-}
-
-/* ---------- Render ---------- */
-async function renderSide(prefix, team, colorOverride){
+function renderSide(prefix, team){
   text(document.getElementById(`name${prefix}`), team ? team.name : `Team ${prefix}`);
   text(document.getElementById(`tag${prefix}`), team?.tag || "");
+  setLogo(document.getElementById(`logo${prefix}`), team?.logo || "");
+  setPanelGradient(`bg${prefix}`, team?.primary, team?.secondary);
 
-  // colors (Firestore override wins; else sheet)
-  const primary = colorOverride?.primary || team?.primary;
-  const secondary = colorOverride?.secondary || team?.secondary;
-  setPanelGradient(`bg${prefix}`, primary, secondary);
-
-  // logo
-  const img = document.getElementById(`logo${prefix}`);
-  const url = await resolveLogoUrl(team);
-  setLogo(img, url);
-
-  // roster list
   const host = document.getElementById(`list${prefix}`);
   host.innerHTML = "";
   const roster = team?.roster || [];
@@ -209,22 +160,24 @@ async function renderSide(prefix, team, colorOverride){
   }
 }
 
-/* expose helpers for the Firestore listener */
+/* expose helpers so the module Firebase listener can reuse them */
 window.__overlay = {
-  ensureTeamsLoaded: (async () => { let cache=null; return async function(){ if(!cache) cache = await loadTeamTable(); return cache; }; })(),
+  ensureTeamsLoaded: (async () => {
+    let cache=null;
+    return async function(){ if(!cache) cache = await loadTeamTable(); return cache; };
+  })(),
   findTeam,
   renderSide
 };
 
-/* ---------- Boot with optional URL/localStorage fallback ---------- */
 (async function boot(){
   try{
     const teams = await window.__overlay.ensureTeamsLoaded();
     const teamA = localStorage.getItem("teamA_name") || qs.get("teamA") || "";
     const teamB = localStorage.getItem("teamB_name") || qs.get("teamB") || "";
 
-    await window.__overlay.renderSide("A", findTeam(teams, teamA));
-    await window.__overlay.renderSide("B", findTeam(teams, teamB));
+    renderSide("A", findTeam(teams, teamA));
+    renderSide("B", findTeam(teams, teamB));
 
     document.getElementById("loading").classList.add("hide");
     document.getElementById("content").classList.remove("hide");
@@ -235,11 +188,10 @@ window.__overlay = {
 })();
 </script>
 
-<!-- Firestore listener (same doc the panel/scoreboard uses) -->
+<!-- Firebase RTDB listener (matches what the panel writes) -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
@@ -248,38 +200,25 @@ const firebaseConfig = {
   storageBucket: "league7overlay.firebasestorage.app",
   messagingSenderId: "126648845416",
   appId: "1:126648845416:web:06be2078b0c95bbb97a7dd",
-  measurementId: "G-QW2NG2BNF9"
+  measurementId: "G-QW2NG2BNF9",
+  databaseURL: "https://league7overlay-default-rtdb.firebaseio.com"
 };
 
 const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
-const auth = getAuth(app);
-try { await signInAnonymously(auth); } catch(e) { /* public-read ok */ }
+const db  = getDatabase(app);
 
-// optional support for ?overlay=
-const OVERLAY_ID  = new URLSearchParams(location.search).get("overlay") || "main";
-const OVERLAY_REF = doc(db, "overlays", OVERLAY_ID);
-
-onSnapshot(OVERLAY_REF, async (snap) => {
-  const data = snap.data() || {};
-  const teamAName = data.teamAName || "";
-  const teamBName = data.teamBName || "";
-  const teamAColors = data.teamAColors || null;
-  const teamBColors = data.teamBColors || null;
-
-  if (!teamAName && !teamBName) return;
-
+// Listen for changes published by the panel
+onValue(ref(db, "/overlay/selectedTeams"), async (snap) => {
   try{
+    const v = snap.val() || {};
     const teams = await window.__overlay.ensureTeamsLoaded();
-    const A = window.__overlay.findTeam(teams, teamAName);
-    const B = window.__overlay.findTeam(teams, teamBName);
-    await window.__overlay.renderSide("A", A, teamAColors);
-    await window.__overlay.renderSide("B", B, teamBColors);
+    const A = window.__overlay.findTeam(teams, v.teamA || "");
+    const B = window.__overlay.findTeam(teams, v.teamB || "");
+    window.__overlay.renderSide("A", A);
+    window.__overlay.renderSide("B", B);
     document.getElementById("loading")?.classList.add("hide");
     document.getElementById("content")?.classList.remove("hide");
-  }catch(e){
-    console.error(e);
-  }
+  }catch(e){ console.error(e); }
 });
 </script>
 </body>
