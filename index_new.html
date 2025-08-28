@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>League 7 — Overlay (Scaled Stage)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
+<style>
+  /* ----- Page base (no scrollbars, center the overlay) ----- */
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'IM Fell English SC', serif;
+  }
+  body {
+    display: grid;
+    place-items: center; /* center the scaled stage in the page/OBS source */
+    background: transparent;
+  }
+
+  /* ----- Scaler wrapper (centers and holds the scaled stage) ----- */
+  .fit {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: transparent;
+  }
+
+  /* ----- Fixed stage (design space) ----- */
+  #stage {
+    position: absolute;
+    left: 0; top: 0;
+    width: 1920px;
+    height: 1080px;
+    transform-origin: top left; /* important: scale from (0,0) */
+    background: transparent;
+  }
+
+  /* Background art — replace "overlay.png" with your path if needed */
+  #bg {
+    position: absolute;
+    inset: 0;
+    width: 1920px;
+    height: 1080px;
+    object-fit: cover;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ----- Name/Score boxes (ABSOLUTE in pixel space) ----- */
+  /* tweak these four blocks to match the gold plates/tabs on your art */
+  .box {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    color: white;
+    /* optional debug outline while aligning:
+       outline: 1px dashed rgba(255,255,255,.35);
+    */
+  }
+
+  /* Team names on gold name plates */
+  #nameA, #nameB {
+    font-weight: bold;
+    font-size: 36px;
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0,0,0,.6);
+    padding: 0 8px;           /* small safety padding */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Scores on small gold tabs */
+  #scoreA, #scoreB {
+    font-weight: 900;
+    font-size: 56px;
+    color: #111;              /* black-on-gold look */
+    text-shadow: 0 1px 2px rgba(0,0,0,.35);
+  }
+
+  /* ---- Pixel positions (measured for a typical “VS” bar) ----
+     You can nudge these numbers; they’ll remain locked after scaling.
+     X = left, Y = top, W = width, H = height (all in pixels).
+     These defaults mirror a common layout and should be close. */
+  /* Left team name plate */
+  #boxNameA { left: 460px; top: 35px; width: 540px; height: 56px; }
+  /* Left score tab */
+  #boxScoreA { left: 505px; top: 90px; width: 180px; height: 44px; }
+
+  /* Right team name plate */
+  #boxNameB { left: 920px; top: 35px; width: 540px; height: 56px; } /* (or use right:460px if you prefer) */
+  /* Right score tab */
+  #boxScoreB { left: 1235px; top: 88px; width: 180px; height: 44px; }
+
+  /* optional: make the whole thing mouse-transparent for OBS */
+  .passthrough { pointer-events: none; }
+</style>
+</head>
+<body>
+  <div class="fit">
+    <!-- Fixed 1920×1080 stage (scaled as one unit) -->
+    <div id="stage" class="passthrough">
+      <img id="bg" src="overlay.png" alt="Overlay art" />
+
+      <!-- Left team name -->
+      <div id="boxNameA" class="box"><div id="nameA">Team A</div></div>
+      <!-- Left score -->
+      <div id="boxScoreA" class="box"><div id="scoreA">0</div></div>
+
+      <!-- Right team name -->
+      <div id="boxNameB" class="box"><div id="nameB">Team B</div></div>
+      <!-- Right score -->
+      <div id="boxScoreB" class="box"><div id="scoreB">0</div></div>
+    </div>
+  </div>
+
+<script>
+/* ===== 1) Uniformly scale the 1920×1080 stage to fit the window/OBS ===== */
+function fitStage() {
+  const stage = document.getElementById('stage');
+  const ww = window.innerWidth, wh = window.innerHeight;
+  const scale = Math.min(ww / 1920, wh / 1080);
+  stage.style.transform = `scale(${scale})`;
+
+  // center the scaled stage
+  const sw = 1920 * scale, sh = 1080 * scale;
+  stage.style.left = `${(ww - sw) / 2}px`;
+  stage.style.top  = `${(wh - sh) / 2}px`;
+}
+window.addEventListener('resize', fitStage);
+fitStage();
+
+/* ===== 2) Auto-shrink long team names (keeps within their box) ===== */
+function autoshrink(el, maxPx, minPx) {
+  const parent = el.parentElement;
+  const limit = parent.clientWidth - 10; // small safety padding
+  el.style.fontSize = maxPx + 'px';
+
+  // shrink until it fits or hit min
+  while (el.scrollWidth > parent.clientWidth && parseInt(el.style.fontSize, 10) > minPx) {
+    el.style.fontSize = (parseInt(el.style.fontSize, 10) - 1) + 'px';
+  }
+}
+
+function render(names = {A:'Team A', B:'Team B'}, scores = {A:0, B:0}) {
+  const nameA = document.getElementById('nameA');
+  const nameB = document.getElementById('nameB');
+  const scoreA = document.getElementById('scoreA');
+  const scoreB = document.getElementById('scoreB');
+
+  nameA.textContent = names.A || 'Team A';
+  nameB.textContent = names.B || 'Team B';
+  scoreA.textContent = scores.A ?? 0;
+  scoreB.textContent = scores.B ?? 0;
+
+  // shrink names if needed (36 → min 22)
+  autoshrink(nameA, 36, 22);
+  autoshrink(nameB, 36, 22);
+}
+
+/* Demo placeholders — remove or replace with your live data pipe later */
+render({A:'Team A', B:'Team B'}, {A:0, B:0});
+
+/* ===== 3) (Optional) Live hooks (leave commented until you’re ready) =====
+   Example Firestore read:
+   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+   import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+   // ...init...
+   onSnapshot(doc(db, "overlays", "main"), (snap) => {
+     const d = snap.data() || {};
+     render({A: d.teamAName, B: d.teamBName}, {A: d.mapScoreA, B: d.mapScoreB});
+   });
+*/
+</script>
+</body>
+</html>
