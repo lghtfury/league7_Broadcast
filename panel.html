@@ -126,7 +126,7 @@
 
           <!-- NEW: split buttons -->
           <button id="btnPushScoreboard" class="btn primary" title="Push current scoreboard data to overlay">Push to Scoreboard</button>
-          <button id="btnPushRosters" class="btn ghost" title="Not connected yet">Push to Rosters</button>
+          <button id="btnPushRosters" class="btn ghost" title="Push selected teams to Rosters overlay">Push to Rosters</button>
           <button id="btnPushTVT" class="btn ghost" title="Not connected yet">Push to TVT</button>
           <button id="btnPushLogos" class="btn ghost" title="Not connected yet">Push to Logos</button>
 
@@ -159,7 +159,6 @@
 
         <!-- Big total (driven by hidden #scoreA) -->
         <div class="scoreTotal">Score total: <strong><span id="liveA">0</span></strong></div>
-        <!-- Hidden numeric inputs as source of truth -->
         <input id="scoreA" type="number" value="0"
                style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true" />
 
@@ -181,7 +180,7 @@
             <input id="teamBName" type="text" placeholder="Team B" />
           </div>
 
-          <div class="color-group">
+        <div class="color-group">
             <span class="lbl">Secondary Color</span>
             <input id="B1picker" type="color" value="#333333" />
             <span id="B1sw" class="sw"></span>
@@ -449,8 +448,10 @@ boot();
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
 import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+/* RTDB for Rosters */
+import { getDatabase, ref, set as rtdbSet } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
 
-/* Your Firebase config */
+/* Your Firebase config — added databaseURL for RTDB */
 const firebaseConfig = {
   apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
   authDomain: "league7overlay.firebaseapp.com",
@@ -458,10 +459,13 @@ const firebaseConfig = {
   storageBucket: "league7overlay.firebasestorage.app",
   messagingSenderId: "126648845416",
   appId: "1:126648845416:web:06be2078b0c95bbb97a7dd",
-  measurementId: "G-QW2NG2BNF9"
+  measurementId: "G-QW2NG2BNF9",
+  databaseURL: "https://league7overlay-default-rtdb.firebaseio.com"
 };
 
 const app = initializeApp(firebaseConfig);
+
+/* Firestore (scoreboard) */
 const db  = getFirestore(app);
 const auth = getAuth(app);
 await signInAnonymously(auth);
@@ -499,9 +503,26 @@ document.getElementById("btnPushScoreboard").addEventListener("click", async () 
   }
 });
 
-/* Placeholders: not connected yet */
+/* ===== Rosters wiring (Realtime Database) ===== */
+const dbRT = getDatabase(app);
+document.getElementById("btnPushRosters").addEventListener("click", async () => {
+  const teamA = (document.getElementById('teamAName').value || 'Team A').trim();
+  const teamB = (document.getElementById('teamBName').value || 'Team B').trim();
+  try {
+    window.setStatus("Pushing rosters…");
+    await rtdbSet(ref(dbRT, "/overlay/selectedTeams"), { teamA, teamB, updatedAt: Date.now() });
+    // local backup (overlay can read if RTDB is temporarily unreachable)
+    localStorage.setItem("teamA_name", teamA);
+    localStorage.setItem("teamB_name", teamB);
+    window.setStatus(`Rosters pushed ✔  ${teamA} vs ${teamB}`, "ok");
+  } catch (e) {
+    console.error(e);
+    window.setStatus("Rosters push failed", "err");
+  }
+});
+
+/* Leave these two as placeholders for now */
 const notReady = (label) => () => window.setStatus(`${label}: not connected yet`, "warn");
-document.getElementById("btnPushRosters").addEventListener("click", notReady("Rosters"));
 document.getElementById("btnPushTVT").addEventListener("click", notReady("TVT"));
 document.getElementById("btnPushLogos").addEventListener("click", notReady("Logos"));
 </script>
