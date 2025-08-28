@@ -123,7 +123,13 @@
         </div>
         <div class="stack right">
           <button id="btnClearAll" class="btn ghost">Clear Scores</button>
-          <button id="btnPush" class="btn primary">Push to Overlay</button>
+
+          <!-- NEW: split buttons -->
+          <button id="btnPushScoreboard" class="btn primary" title="Push current scoreboard data to overlay">Push to Scoreboard</button>
+          <button id="btnPushRosters" class="btn ghost" title="Not connected yet">Push to Rosters</button>
+          <button id="btnPushTVT" class="btn ghost" title="Not connected yet">Push to TVT</button>
+          <button id="btnPushLogos" class="btn ghost" title="Not connected yet">Push to Logos</button>
+
           <span id="status" class="status">Idle</span>
         </div>
       </div>
@@ -153,7 +159,7 @@
 
         <!-- Big total (driven by hidden #scoreA) -->
         <div class="scoreTotal">Score total: <strong><span id="liveA">0</span></strong></div>
-        <!-- Keep original logic: invisible numeric input as the source of truth -->
+        <!-- Hidden numeric inputs as source of truth -->
         <input id="scoreA" type="number" value="0"
                style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true" />
 
@@ -295,7 +301,7 @@ function wireColor(id){
 }
 ['A1','A2','B1','B2'].forEach(wireColor);
 
-/* ===== scores: keep original logic, now with hidden inputs as source ===== */
+/* ===== scores: hidden inputs as source ===== */
 function syncTotalsFromInputs(){
   const a = Number($('#scoreA')?.value) || 0;
   const b = Number($('#scoreB')?.value) || 0;
@@ -425,7 +431,7 @@ function onMatchPicked(){
 async function boot(){
   loadPanelCfg();
   renderPreview();
-  syncTotalsFromInputs();               // ensure totals reflect hidden inputs on load
+  syncTotalsFromInputs();
   try{
     await Promise.all([loadTeamColors(), loadMatches()]);
     $('#matchId').addEventListener('change', onMatchPicked);
@@ -480,8 +486,8 @@ onSnapshot(OVERLAY_REF, (snap) => {
   if (sB) sB.value = b;
 });
 
-// Push to Firestore on click
-document.getElementById("btnPush").addEventListener("click", async () => {
+// Push to Firestore on click (Scoreboard only)
+document.getElementById("btnPushScoreboard").addEventListener("click", async () => {
   const payload = window.collectPayload();
   try {
     window.setStatus("Pushing…");
@@ -492,6 +498,12 @@ document.getElementById("btnPush").addEventListener("click", async () => {
     window.setStatus("Push failed", "err");
   }
 });
+
+/* Placeholders: not connected yet */
+const notReady = (label) => () => window.setStatus(`${label}: not connected yet`, "warn");
+document.getElementById("btnPushRosters").addEventListener("click", notReady("Rosters"));
+document.getElementById("btnPushTVT").addEventListener("click", notReady("TVT"));
+document.getElementById("btnPushLogos").addEventListener("click", notReady("Logos"));
 </script>
 </body>
 </html>
