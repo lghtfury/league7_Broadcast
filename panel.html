@@ -126,7 +126,7 @@
 
           <!-- NEW: split buttons -->
           <button id="btnPushScoreboard" class="btn primary" title="Push current scoreboard data to overlay">Push to Scoreboard</button>
-          <button id="btnPushRosters" class="btn ghost" title="Push rosters to overlay">Push to Rosters</button>
+          <button id="btnPushRosters" class="btn ghost" title="Not connected yet">Push to Rosters</button>
           <button id="btnPushTVT" class="btn ghost" title="Not connected yet">Push to TVT</button>
           <button id="btnPushLogos" class="btn ghost" title="Not connected yet">Push to Logos</button>
 
@@ -181,7 +181,7 @@
             <input id="teamBName" type="text" placeholder="Team B" />
           </div>
 
-        <div class="color-group">
+          <div class="color-group">
             <span class="lbl">Secondary Color</span>
             <input id="B1picker" type="color" value="#333333" />
             <span id="B1sw" class="sw"></span>
@@ -499,39 +499,9 @@ document.getElementById("btnPushScoreboard").addEventListener("click", async () 
   }
 });
 
-// >>> ADDED: Push to Rosters (team names + colors) to the same doc
-document.getElementById("btnPushRosters").addEventListener("click", async () => {
-  try {
-    const teamAName = document.getElementById('teamAName').value || 'Team A';
-    const teamBName = document.getElementById('teamBName').value || 'Team B';
-    const teamAColors = {
-      primary: document.getElementById('A1hex').textContent.trim(),
-      secondary: document.getElementById('A2hex').textContent.trim()
-    };
-    const teamBColors = {
-      primary: document.getElementById('B1hex').textContent.trim(),
-      secondary: document.getElementById('B2hex').textContent.trim()
-    };
-    const matchId = (document.getElementById('matchId').value || '').trim();
-
-    window.setStatus("Pushing rosters…");
-    await setDoc(OVERLAY_REF, {
-      teamAName,
-      teamBName,
-      teamAColors,
-      teamBColors,
-      matchIdForRosters: matchId,
-      rostersPushedAt: Date.now()
-    }, { merge: true });
-    window.setStatus("Rosters pushed ✔", "ok");
-  } catch (e) {
-    console.error(e);
-    window.setStatus("Rosters push failed", "err");
-  }
-});
-
-// Keep TVT/Logos as placeholders (unchanged)
+/* Placeholders: not connected yet */
 const notReady = (label) => () => window.setStatus(`${label}: not connected yet`, "warn");
+document.getElementById("btnPushRosters").addEventListener("click", notReady("Rosters"));
 document.getElementById("btnPushTVT").addEventListener("click", notReady("TVT"));
 document.getElementById("btnPushLogos").addEventListener("click", notReady("Logos"));
 </script>
