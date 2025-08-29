@@ -2,18 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Gameplay Overlay (SVG + OG cosmetics)</title>
+<title>Gameplay Overlay (SVG + Gradient + IM Fell)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<!-- Fonts: IM Fell (names), Inter (scores) -->
+<!-- Load IM Fell English SC font -->
 <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800;900&display=swap" rel="stylesheet">
 
 <style>
-  /* Page stays transparent for OBS */
+  /* Page transparent for OBS */
   html,body{margin:0;height:100%;background:transparent;overflow:hidden}
 
-  /* Overlay container so the frame and the SVG scale together */
+  /* Overlay container */
   #overlay {
     position: relative;
     width: 100vw;
@@ -21,28 +20,37 @@
     background: transparent;
   }
 
-  /* Your working SVG fills the container */
+  /* SVG fills container */
   .stage{width:100%;height:100%;display:block;background:transparent}
 
-  /* Text styles (unchanged logic; only font for names switches to IM Fell) */
-  .name{
-    font: 800 42px "IM Fell English SC", serif;
-    fill:#fff; paint-order:stroke; stroke:#0008; stroke-width:1px;
+  /* Text styles (all IM Fell now) */
+  .name, .score {
+    font-family: "IM Fell English SC", serif;
+    font-weight: 800;
+    fill:#fff;
+    paint-order:stroke;
+    stroke:#0008;
+    stroke-width:1px;
   }
-  .score{
-    font: 900 56px Inter, system-ui, sans-serif;
-    fill:#111; paint-order:stroke; stroke:#fff8; stroke-width:.5px;
+  .score {
+    font-weight: 900;
+    font-size: 56px;
+    fill:#111;
+    paint-order:stroke;
+    stroke:#fff8;
+    stroke-width:.5px;
   }
+
   .dbg{fill:none;stroke:#ff3b82;stroke-width:2;opacity:.7;display:none}
 
-  /* ---------- OG gradient frame (cosmetic) ---------- */
+  /* ---------- Gradient frame (cosmetic) ---------- */
   :root{
     --frame: 15px;
     --A1:#555; --A2:#333; /* Team A primary/secondary */
     --B1:#333; --B2:#111; /* Team B primary/secondary */
   }
   #frame, #frame .edge { position: absolute; pointer-events: none; }
-  #frame { inset: 0; z-index: 10; } /* above SVG text but only touches edges */
+  #frame { inset: 0; z-index: 10; }
 
   .edge { background: transparent; }
   .edge.top    { left: 0; right: 0; top: 0; height: var(--frame); }
@@ -60,9 +68,9 @@
 <body>
 
 <div id="overlay">
-  <!-- Your working SVG (unchanged except font family for names) -->
+  <!-- Working SVG -->
   <svg class="stage" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet">
-    <!-- Background image -->
+    <!-- Background -->
     <image href="overlay.png" x="0" y="0" width="1920" height="1080" />
 
     <!-- Debug rectangles (toggle in JS) -->
@@ -71,7 +79,7 @@
     <rect id="dbgScoreA" class="dbg" x="502"  y="88"  width="192" height="51"/>
     <rect id="dbgScoreB" class="dbg" x="1224" y="87"  width="192" height="51"/>
 
-    <!-- Team names (final centers + shrink width 444) -->
+    <!-- Team names -->
     <text id="teamAName" class="name"
           x="611" y="58" text-anchor="middle" dominant-baseline="middle"
           data-maxwidth="444">Team A</text>
@@ -80,7 +88,7 @@
           x="1301" y="58" text-anchor="middle" dominant-baseline="middle"
           data-maxwidth="444">Team B</text>
 
-    <!-- Scores (final centers) -->
+    <!-- Scores -->
     <text id="teamAScore" class="score"
           x="598" y="121" text-anchor="middle" dominant-baseline="middle">0</text>
 
@@ -88,7 +96,7 @@
           x="1320" y="121" text-anchor="middle" dominant-baseline="middle">0</text>
   </svg>
 
-  <!-- OG gradient border on top (cosmetic only) -->
+  <!-- Gradient border -->
   <div id="frame" aria-hidden="true">
     <div class="edge top"></div>
     <div class="edge right"></div>
@@ -107,7 +115,7 @@
     });
   }
 
-  // Shrink-to-fit team names (fits inside 444px plates)
+  // Shrink-to-fit team names
   function fitText(id) {
     const el = document.getElementById(id);
     const maxW = parseFloat(el.getAttribute("data-maxwidth") || "444");
