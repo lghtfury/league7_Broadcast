@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <title>League 7 In-Game Overlay</title>
+  <!-- Base display font from your OG -->
   <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
+  <!-- Add Inter for crisp scoreboard text (the font we used during calibration) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800;900&display=swap" rel="stylesheet">
   <style>
     /* ---------- Base ---------- */
     html, body {
@@ -30,7 +33,7 @@
       background: transparent !important;
     }
 
-    /* Background frame art (if you use one) */
+    /* Background art (kept transparent over game) */
     #background {
       position: absolute;
       inset: 0;
@@ -46,7 +49,6 @@
     #frame { inset: 0; z-index: 1; }
 
     .edge { background: transparent; }
-
     .edge.top    { left: 0; right: 0; top: 0; height: var(--frame); }
     .edge.bottom { left: 0; right: 0; bottom: 0; height: var(--frame); }
     .edge.left   { left: 0; top: 0; bottom: 0; width: var(--frame); }
@@ -55,43 +57,50 @@
     /* Left/right use each team’s two tones (vertical fade) */
     .edge.left  { background: linear-gradient(to bottom, var(--A1), var(--A2)); }
     .edge.right { background: linear-gradient(to bottom, var(--B1), var(--B2)); }
-
-    /* Top/bottom blend A→B; swap or change to taste */
+    /* Top/bottom blend A→B */
     .edge.top    { background: linear-gradient(to right, var(--A1), var(--B1)); }
     .edge.bottom { background: linear-gradient(to right, var(--A2), var(--B2)); }
 
-    /* ---------- UI: team names & scores ---------- */
-    #teamA, #teamB {
+    /* ---------- Calibrated UI (centers + fixed widths) ---------- */
+    .name, .score {
       position: absolute;
-      top: 35px;
-      color: white;
-      font-weight: bold;
-      font-size: 36px;
-      z-index: 3;
+      transform: translate(-50%, -50%); /* center on the given left/top */
+      text-align: center;
       white-space: nowrap;
-      max-width: 540px;
       overflow: hidden;
       text-overflow: ellipsis;
-      text-align: center;
+      pointer-events: none; /* good for OBS */
+      font-family: Inter, system-ui, sans-serif; /* crisp scoreboard text */
     }
-    #teamA { left: 460px; }
-    #teamB { right: 460px; }
 
-    #scoreA, #scoreB {
-      position: absolute;
-      color: black;
-      font-size: 56px;
-      font-weight: bold;
-      text-shadow: 2px 2px 4px #000;
-      z-index: 3;
+    /* Names (plates 444x52, font base 42px, white with drop shadow) */
+    #teamAName {
+      left: 611px; top: 58px; width: 444px; height: 52px;
+      font-weight: 800; font-size: 42px; color: #fff;
+      text-shadow: 0 2px 4px rgba(0,0,0,.65);
     }
-    #scoreA { top: 87px; left: 595px; transform: translateX(-50%); }
-    #scoreB { top: 86px; right: 595px; transform: translateX(50%); }
+    #teamBName {
+      left: 1301px; top: 58px; width: 444px; height: 52px;
+      font-weight: 800; font-size: 42px; color: #fff;
+      text-shadow: 0 2px 4px rgba(0,0,0,.65);
+    }
+
+    /* Scores (tabs 192x51, font 56px, dark with subtle light shadow) */
+    #teamAScore {
+      left: 598px; top: 121px; width: 192px; height: 51px;
+      font-weight: 900; font-size: 56px; color: #111;
+      text-shadow: 0 1px 2px rgba(255,255,255,.6);
+    }
+    #teamBScore {
+      left: 1320px; top: 121px; width: 192px; height: 51px;
+      font-weight: 900; font-size: 56px; color: #111;
+      text-shadow: 0 1px 2px rgba(255,255,255,.6);
+    }
   </style>
 </head>
 <body>
   <div id="overlay">
-    <!-- Optional background art (non-tint) -->
+    <!-- Optional background frame art (transparent over game) -->
     <img id="background" src="overlay.png" alt="Overlay background" />
 
     <!-- Gradient border only -->
@@ -102,27 +111,18 @@
       <div class="edge left"></div>
     </div>
 
-    <!-- Team names and scores -->
-    <div id="teamA">Team A</div>
-    <div id="teamB">Team B</div>
-    <div id="scoreA">0</div>
-    <div id="scoreB">0</div>
+    <!-- Calibrated Team names and scores -->
+    <div id="teamAName" class="name">Team A</div>
+    <div id="teamBName" class="name">Team B</div>
+    <div id="teamAScore" class="score">0</div>
+    <div id="teamBScore" class="score">0</div>
   </div>
 
   <script>
-    /* ---------- Overlay render helpers (unchanged) ---------- */
+    /* ---------- Utilities & helpers ---------- */
     function safeColor(hex, fallback = "#222") {
       const v = String(hex || "").trim();
       return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : fallback;
-    }
-
-    function adjustFontSize(id) {
-      const el = document.getElementById(id);
-      const length = (el.textContent || "").trim().length;
-      el.style.fontSize =
-        length > 20 ? "24px" :
-        length > 16 ? "26px" :
-        length > 12 ? "30px" : "36px";
     }
 
     function setBorderGradient(a1, a2, b1, b2) {
@@ -137,14 +137,36 @@
       root.style.setProperty("--B2", B2);
     }
 
+    /* Tiny shrink-to-fit: keeps names inside 444px plates */
+    function shrinkToFit(el, maxPx = 42, minPx = 18, pad = 10) {
+      if (!el) return;
+      el.style.fontSize = maxPx + "px";
+      let size = maxPx;
+      const limit = el.clientWidth - pad; // available width
+      // Decrease font size until it fits or hits the min
+      while (el.scrollWidth > limit && size > minPx) {
+        size -= 1;
+        el.style.fontSize = size + "px";
+      }
+    }
+
     function applyPayload(data) {
       if (!data) return;
-      document.getElementById("teamA").textContent = data.teamAName || data.teamA || "Team A";
-      document.getElementById("teamB").textContent = data.teamBName || data.teamB || "Team B";
-      adjustFontSize("teamA");
-      adjustFontSize("teamB");
-      document.getElementById("scoreA").textContent = data.mapScoreA ?? 0;
-      document.getElementById("scoreB").textContent = data.mapScoreB ?? 0;
+      // Names
+      const aName = data.teamAName || data.teamA || "Team A";
+      const bName = data.teamBName || data.teamB || "Team B";
+      const elA = document.getElementById("teamAName");
+      const elB = document.getElementById("teamBName");
+      elA.textContent = aName;
+      elB.textContent = bName;
+      shrinkToFit(elA);  // ensure fits 444px
+      shrinkToFit(elB);
+
+      // Scores
+      document.getElementById("teamAScore").textContent = data.mapScoreA ?? data.teamAScore ?? data.scoreA ?? 0;
+      document.getElementById("teamBScore").textContent = data.mapScoreB ?? data.teamBScore ?? data.scoreB ?? 0;
+
+      // Border colors (optional)
       setBorderGradient(
         data?.teamAColors?.primary,
         data?.teamAColors?.secondary,
@@ -154,12 +176,11 @@
     }
   </script>
 
-  <!-- ---------- Firestore live reader (ONLY) ---------- -->
+  <!-- ---------- Firestore live reader (unchanged plumbing) ---------- -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
     import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
-    // SAME config you used in panel.html
     const firebaseConfig = {
       apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
       authDomain: "league7overlay.firebaseapp.com",
@@ -180,9 +201,11 @@
     onSnapshot(doc(db, "overlays", OVERLAY_ID), (snap) => {
       const data = snap.data();
       if (!data) return;
-      // call the helper defined above
       window.applyPayload(data);
     });
+
+    // Initial call for local preview (optional)
+    window.applyPayload({});
   </script>
 </body>
 </html>
