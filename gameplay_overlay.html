@@ -41,6 +41,8 @@
     paint-order:stroke;
     stroke:#fff8;
     stroke-width:.7px;        
+    dominant-baseline: middle;
+    transform: translateY(-3px); /* nudge upward */
   }
 
   .dbg{fill:none;stroke:#ff3b82;stroke-width:2;opacity:.7;display:none}
@@ -133,13 +135,12 @@
   fitText("teamBName");
 </script>
 
-<!-- NEW: Firestore listener for live updates -->
+<!-- Firestore listener for live updates -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
   import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
 
-  // Same config as control panel
   const firebaseConfig = {
     apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
     authDomain: "league7overlay.firebaseapp.com",
@@ -180,13 +181,11 @@
   onSnapshot(OVERLAY_REF, (snap) => {
     const d = snap.data() || {};
 
-    // Names + scores
     $("teamAName").textContent  = d.teamAName || "Team A";
     $("teamBName").textContent  = d.teamBName || "Team B";
     $("teamAScore").textContent = Number(d.mapScoreA) || 0;
     $("teamBScore").textContent = Number(d.mapScoreB) || 0;
 
-    // Colors → CSS vars for gradient frame
     const A1 = pick(d?.teamAColors?.primary,   "#555555");
     const A2 = pick(d?.teamAColors?.secondary, "#333333");
     const B1 = pick(d?.teamBColors?.primary,   "#333333");
