@@ -18,19 +18,9 @@
     padding:24px; display:flex; justify-content:center;
   }
 
-  /* TOP/BOTTOM LAYOUT */
-  .wrap{
-    width:min(1100px,100%);
-    display:grid;
-    grid-template-columns: 1fr;     /* single column */
-    grid-template-rows: auto 1fr;   /* top = controls, bottom = preview */
-    gap:20px;
-    height: calc(100vh - 48px);
-  }
-
+  .wrap{width:min(1100px,100%); display:grid; grid-template-columns:1fr; grid-template-rows:auto 1fr; gap:20px; height:calc(100vh - 48px)}
   .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 12px 28px rgba(0,0,0,.35)}
 
-  /* Header row with buttons on right */
   .match-head{
     background:#000; border:1px solid #222; border-radius:14px; padding:14px; margin-bottom:12px;
     display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center;
@@ -54,47 +44,20 @@
   .tiny{font-size:11px; color:#8d96ac}
 
   .team-card{background:var(--ink); border:1px solid var(--line); border-radius:12px; padding:12px}
+  .team-head{display:grid; grid-template-columns: 1fr auto; gap:16px; align-items:end}
 
-  /* Name left, colors right */
-  .team-head{
-    display:grid;
-    grid-template-columns: 1fr auto;
-    gap:16px;
-    align-items:end;
-  }
-  .color-group{
-    display:grid;
-    grid-template-columns: auto auto auto 18px auto auto auto; /* label | picker | sw | gap | hex | picker | sw */
-    gap:8px 10px;
-    align-items:center;
-  }
+  .color-group{display:grid; grid-template-columns: auto auto auto 18px auto auto auto; gap:8px 10px; align-items:center}
   .color-group .lbl{font-size:12px; color:#8fa0c7; margin:0 8px 0 0}
   .sw{width:22px; height:22px; border-radius:6px; border:2px solid rgba(255,255,255,.9); box-shadow:0 0 6px rgba(0,0,0,.5)}
   .hex{font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:#b8c4e6; min-width:70px}
   .color-group input[type="color"]{width:38px; height:28px; padding:0; border:0; background:transparent}
 
-  /* Big centered totals + centered buttons */
-  .scoreTotal{
-    text-align:center;
-    font-size:28px;
-    letter-spacing:.5px;
-    margin:12px 0 10px;
-    color:#cfe0ff;
-  }
+  .scoreTotal{text-align:center; font-size:28px; letter-spacing:.5px; margin:12px 0 10px; color:#cfe0ff}
   .scoreTotal strong{font-size:34px; color:#e9f1ff}
   .scoreBtns{justify-content:center; gap:12px}
 
-  /* Preview bottom */
-  .wrap > .card:last-child{
-    min-height:50vh;
-    display:flex;
-    flex-direction:column;
-  }
-  .preview{
-    position:relative; flex:1; min-height:280px;
-    border-radius:14px; overflow:hidden; background:#0b0f19; user-select:none;
-    display:flex; align-items:center; justify-content:center; color:#9aa9ce;
-  }
+  .wrap > .card:last-child{min-height:50vh; display:flex; flex-direction:column}
+  .preview{position:relative; flex:1; min-height:280px; border-radius:14px; overflow:hidden; background:#0b0f19; user-select:none; display:flex; align-items:center; justify-content:center; color:#9aa9ce}
   .edge{position:absolute; pointer-events:none}
   .edge.top{left:0; right:0; top:0; height:15px}
   .edge.bottom{left:0; right:0; bottom:0; height:15px}
@@ -102,11 +65,8 @@
   .edge.right{right:0; top:0; bottom:0; width:15px}
 
   pre{max-height:220px; overflow:auto; background:#0f1422; border:1px solid #1e2540; border-radius:10px; padding:10px; color:#c9d4f4}
-
   .status{font-size:12px; color:#9fb0d8}
   .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
-
-  /* Hide the old JSONBin box */
   .jsonbin{display:none}
 </style>
 </head>
@@ -117,51 +77,55 @@
       <div class="match-head">
         <div>
           <label>Match ID</label>
-          <select id="matchId">
-            <option value="">Loading…</option>
-          </select>
+          <select id="matchId"><option value="">Loading…</option></select>
         </div>
         <div class="stack right">
           <button id="btnClearAll" class="btn ghost">Clear Scores</button>
-
-          <!-- NEW: split buttons -->
           <button id="btnPushScoreboard" class="btn primary" title="Push current scoreboard data to overlay">Push to Scoreboard</button>
           <button id="btnPushRosters" class="btn ghost" title="Push selected teams to Rosters overlay">Push to Rosters</button>
-          <button id="btnPushTVT" class="btn ghost" title="Not connected yet">Push to TVT</button>
+          <button id="btnPushTVT" class="btn ghost" title="Push Team vs Team overlay">Push to TVT</button>
           <button id="btnPushLogos" class="btn ghost" title="Not connected yet">Push to Logos</button>
-
           <span id="status" class="status">Idle</span>
+        </div>
+      </div>
+
+      <!-- NEW: Match Series quick inputs -->
+      <div class="team-card" style="margin-bottom:12px;">
+        <h2>Match Series</h2>
+        <div class="stack" style="gap:16px; align-items:flex-end; flex-wrap:wrap">
+          <div style="width:140px">
+            <label>Series A</label>
+            <input id="seriesA" type="number" min="0" max="9" step="1" value="0" />
+          </div>
+          <div style="width:140px">
+            <label>Series B</label>
+            <input id="seriesB" type="number" min="0" max="9" step="1" value="0" />
+          </div>
+          <div class="tiny">These are the game wins in the series (e.g., best-of-5).</div>
         </div>
       </div>
 
       <!-- Team A -->
       <div class="team-card" style="margin-bottom:12px; position:relative">
         <h2>Team A</h2>
-
         <div class="team-head">
           <div>
             <label>Name</label>
             <input id="teamAName" type="text" placeholder="Team A" />
           </div>
-
           <div class="color-group">
             <span class="lbl">Primary Color</span>
             <input id="A1picker" type="color" value="#555555" />
             <span id="A1sw" class="sw"></span>
             <span style="width:18px"></span>
             <span id="A1hex" class="hex">#555555</span>
-
             <input id="A2picker" type="color" value="#333333" />
             <span id="A2sw" class="sw"></span>
             <span id="A2hex" class="hex" style="grid-column:5 / span 3">#333333</span>
           </div>
         </div>
-
-        <!-- Big total (driven by hidden #scoreA) -->
         <div class="scoreTotal">Score total: <strong><span id="liveA">0</span></strong></div>
-        <input id="scoreA" type="number" value="0"
-               style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true" />
-
+        <input id="scoreA" type="number" value="0" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true" />
         <div class="stack scoreBtns">
           <button id="btnAminus30" class="btn ghost">−30</button>
           <button id="btnAminus"   class="btn ghost">−10</button>
@@ -173,31 +137,24 @@
       <!-- Team B -->
       <div class="team-card" style="position:relative">
         <h2>Team B</h2>
-
         <div class="team-head">
           <div>
             <label>Name</label>
             <input id="teamBName" type="text" placeholder="Team B" />
           </div>
-
-        <div class="color-group">
+          <div class="color-group">
             <span class="lbl">Secondary Color</span>
             <input id="B1picker" type="color" value="#333333" />
             <span id="B1sw" class="sw"></span>
             <span style="width:18px"></span>
             <span id="B1hex" class="hex">#333333</span>
-
             <input id="B2picker" type="color" value="#111111" />
             <span id="B2sw" class="sw"></span>
             <span id="B2hex" class="hex" style="grid-column:5 / span 3">#111111</span>
           </div>
         </div>
-
-        <!-- Big total (driven by hidden #scoreB) -->
         <div class="scoreTotal">Score total: <strong><span id="liveB">0</span></strong></div>
-        <input id="scoreB" type="number" value="0"
-               style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true" />
-
+        <input id="scoreB" type="number" value="0" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true" />
         <div class="stack scoreBtns">
           <button id="btnBminus30" class="btn ghost">−30</button>
           <button id="btnBminus"   class="btn ghost">−10</button>
@@ -218,7 +175,6 @@
         Preview
       </div>
 
-      <!-- Old JSONBin tools (hidden) -->
       <div class="card jsonbin" style="margin-top:16px">
         <h2>JSONBin Settings</h2>
         <div class="stack" style="margin-top:10px">
@@ -317,17 +273,11 @@ $('#btnAminus30').onclick = ()=> addScore('#scoreA', -30);
 $('#btnAminus').onclick   = ()=> addScore('#scoreA', -10);
 $('#btnAplus').onclick    = ()=> addScore('#scoreA', +10);
 $('#btnAplus30').onclick  = ()=> addScore('#scoreA', +30);
-
 $('#btnBminus30').onclick = ()=> addScore('#scoreB', -30);
 $('#btnBminus').onclick   = ()=> addScore('#scoreB', -10);
 $('#btnBplus').onclick    = ()=> addScore('#scoreB', +10);
 $('#btnBplus30').onclick  = ()=> addScore('#scoreB', +30);
-
-$('#btnClearAll').onclick = ()=>{
-  $('#scoreA').value = 0;
-  $('#scoreB').value = 0;
-  syncTotalsFromInputs();
-};
+$('#btnClearAll').onclick = ()=>{ $('#scoreA').value = 0; $('#scoreB').value = 0; syncTotalsFromInputs(); };
 
 /* ===== payload for Firebase push (unchanged IDs) ===== */
 function collectPayload(){
@@ -419,10 +369,9 @@ function onMatchPicked(){
   const A = TEAM_COLORS.get(m.teamA) || {};
   const B = TEAM_COLORS.get(m.teamB) || {};
 
-  if(hexOK(A.primary)){ $('#A1picker').value = A.primary; $('#A1picker').dispatchEvent(new Event('input')); }
-  if(hexOK(A.secondary)){ $('#A2picker').value = A.secondary; $('#A2picker').dispatchEvent(new Event('input')); }
-  if(hexOK(B.primary)){ $('#B1picker').value = B.primary; $('#B1picker').dispatchEvent(new Event('input')); }
-  if(hexOK(B.secondary)){ $('#B2picker').value = B.secondary; $('#B2picker').dispatchEvent(new Event('input')); }
+  const setP = (picker,val)=>{ if(hexOK(val)){ picker.value = val; picker.dispatchEvent(new Event('input')); } };
+  setP($('#A1picker'), A.primary); setP($('#A2picker'), A.secondary);
+  setP($('#B1picker'), B.primary); setP($('#B2picker'), B.secondary);
 
   setStatus(`Loaded from sheet: ${id}`, 'ok');
 }
@@ -443,15 +392,15 @@ async function boot(){
 boot();
 </script>
 
-<!-- ===== FIREBASE push + live mirror ===== -->
+<!-- ===== FIREBASE push + live mirror + TVT wiring ===== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
 /* RTDB for Rosters */
 import { getDatabase, ref, set as rtdbSet } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
 
-/* Your Firebase config — added databaseURL for RTDB */
+/* Your Firebase config */
 const firebaseConfig = {
   apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
   authDomain: "league7overlay.firebaseapp.com",
@@ -464,15 +413,14 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-
-/* Firestore (scoreboard) */
 const db  = getFirestore(app);
 const auth = getAuth(app);
 await signInAnonymously(auth);
 
 // Choose overlay namespace via ?overlay=… (default "main")
 const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || "main";
-const OVERLAY_REF = doc(db, "overlays", OVERLAY_ID);
+const OVERLAY_REF = doc(db, "overlays", OVERLAY_ID);  // scoreboard doc
+const TVT_REF     = doc(db, "tvt", OVERLAY_ID);       // TVT doc
 
 // Live mirror so panel shows overlay totals too
 onSnapshot(OVERLAY_REF, (snap) => {
@@ -483,14 +431,23 @@ onSnapshot(OVERLAY_REF, (snap) => {
   const elB = document.getElementById('liveB');
   if (elA) elA.textContent = a;
   if (elB) elB.textContent = b;
-  // keep hidden inputs in sync with overlay doc
   const sA = document.getElementById('scoreA');
   const sB = document.getElementById('scoreB');
   if (sA) sA.value = a;
   if (sB) sB.value = b;
 });
 
-// Push to Firestore on click (Scoreboard only)
+// Helper: derive logo filename from team name (fallback to missing_logo.png)
+function toLogoFile(teamName){
+  if (!teamName) return 'missing_logo.png';
+  const slug = teamName.toLowerCase()
+    .replace(/[^a-z0-9]+/g,'_')
+    .replace(/^_|_$/g,'');
+  return `${slug}.png`;
+}
+
+/* ===== Buttons ===== */
+// Push to Scoreboard (existing)
 document.getElementById("btnPushScoreboard").addEventListener("click", async () => {
   const payload = window.collectPayload();
   try {
@@ -503,7 +460,7 @@ document.getElementById("btnPushScoreboard").addEventListener("click", async () 
   }
 });
 
-/* ===== Rosters wiring (Realtime Database) ===== */
+// Push to Rosters (existing)
 const dbRT = getDatabase(app);
 document.getElementById("btnPushRosters").addEventListener("click", async () => {
   const teamA = (document.getElementById('teamAName').value || 'Team A').trim();
@@ -511,7 +468,6 @@ document.getElementById("btnPushRosters").addEventListener("click", async () => 
   try {
     window.setStatus("Pushing rosters…");
     await rtdbSet(ref(dbRT, "/overlay/selectedTeams"), { teamA, teamB, updatedAt: Date.now() });
-    // local backup (overlay can read if RTDB is temporarily unreachable)
     localStorage.setItem("teamA_name", teamA);
     localStorage.setItem("teamB_name", teamB);
     window.setStatus(`Rosters pushed ✔  ${teamA} vs ${teamB}`, "ok");
@@ -521,10 +477,39 @@ document.getElementById("btnPushRosters").addEventListener("click", async () => 
   }
 });
 
-/* Leave these two as placeholders for now */
-const notReady = (label) => () => window.setStatus(`${label}: not connected yet`, "warn");
-document.getElementById("btnPushTVT").addEventListener("click", notReady("TVT"));
-document.getElementById("btnPushLogos").addEventListener("click", notReady("Logos"));
+// NEW: Push to TVT
+document.getElementById("btnPushTVT").addEventListener("click", async () => {
+  const matchId  = (document.getElementById('matchId').value || '').trim();
+  const teamA    = (document.getElementById('teamAName').value || 'Team A').trim();
+  const teamB    = (document.getElementById('teamBName').value || 'Team B').trim();
+  const seriesA  = Number(document.getElementById('seriesA').value) || 0;
+  const seriesB  = Number(document.getElementById('seriesB').value) || 0;
+
+  const payload = {
+    matchId,
+    teamAName: teamA,
+    teamBName: teamB,
+    seriesA,
+    seriesB,
+    logoA: toLogoFile(teamA),
+    logoB: toLogoFile(teamB),
+    updatedAt: serverTimestamp()
+  };
+
+  try{
+    window.setStatus("Pushing TVT…");
+    await setDoc(TVT_REF, payload, { merge:true });
+    window.setStatus("TVT pushed ✔", "ok");
+  }catch(e){
+    console.error(e);
+    window.setStatus("TVT push failed","err");
+  }
+});
+
+// Leave Logos button as not-connected (placeholder)
+document.getElementById("btnPushLogos").addEventListener("click", () => {
+  window.setStatus("Logos: not connected yet", "warn");
+});
 </script>
 </body>
 </html>
