@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Team vs Team Overlay</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;background:transparent;overflow:hidden}
+  #stage{position:relative;width:1920px;height:1080px}
+  #bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+  .box{position:absolute;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  .name{font-family:"IM Fell English SC", serif;font-weight:400;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .series{font-family:"IM Fell English SC", serif;font-weight:400;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.6)}
+  .logo{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 6px 12px rgba(0,0,0,.45))}
+
+  /* Calibrated boxes (1920x1080) */
+  #nameA { left:74px;  top:18px;  width:408px; height:92px; }
+  #nameB { left:1411px; top:18px;  width:408px; height:92px; }
+  #serA  { left:490px;  top:18px;  width:115px; height:92px; }
+  #serB  { left:1285px; top:18px;  width:115px; height:92px; }
+  #logoA { left:35px;   top:332px; width:575px; height:454px; }
+  #logoB { left:1283px; top:332px; width:575px; height:454px; }
+
+  .fit{transform-origin:center center}
+</style>
+</head>
+<body>
+  <div id="stage">
+    <img id="bg" src="teamvsteam.png" alt="">
+
+    <!-- Team A Name -->
+    <div id="nameA" class="box">
+      <div id="nameAText" class="name fit" style="font-size:56px;">Team A</div>
+    </div>
+    <!-- Team B Name -->
+    <div id="nameB" class="box">
+      <div id="nameBText" class="name fit" style="font-size:56px;text-align:right;width:100%;">Team B</div>
+    </div>
+    <!-- Series numbers -->
+    <div id="serA" class="box"><div id="serAText" class="series fit" style="font-size:64px;">0</div></div>
+    <div id="serB" class="box"><div id="serBText" class="series fit" style="font-size:64px;">0</div></div>
+    <!-- Logos -->
+    <div id="logoA" class="box"><img id="logoAImg" class="logo" src="images/teams/missing_logo.png" alt=""></div>
+    <div id="logoB" class="box"><img id="logoBImg" class="logo" src="images/teams/missing_logo.png" alt=""></div>
+  </div>
+
+<script type="module">
+/* Firestore listener */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+
+/* Use the same Firebase config as your control panel */
+const firebaseConfig = {
+  apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
+  authDomain: "league7overlay.firebaseapp.com",
+  projectId: "league7overlay",
+  storageBucket: "league7overlay.firebasestorage.app",
+  messagingSenderId: "126648845416",
+  appId: "1:126648845416:web:06be2078b0c95bbb97a7dd",
+  measurementId: "G-QW2NG2BNF9",
+  databaseURL: "https://league7overlay-default-rtdb.firebaseio.com"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// Overlay namespace from URL (?overlay=main)
+const params = new URLSearchParams(location.search);
+const OVERLAY_ID = params.get('overlay') || 'main';
+
+/* Elements */
+const nameAText = document.getElementById('nameAText');
+const nameBText = document.getElementById('nameBText');
+const serAText  = document.getElementById('serAText');
+const serBText  = document.getElementById('serBText');
+const logoAImg  = document.getElementById('logoAImg');
+const logoBImg  = document.getElementById('logoBImg');
+
+/* Fit helper: scale down if text overflows its box */
+function fit(el){
+  const parent = el.parentElement;
+  el.style.transform = 'scale(1)';
+  let s = 1;
+  // quick guard to avoid infinite loops if font not loaded yet
+  let guard = 0;
+  while (el.scrollWidth > parent.clientWidth && s > 0.6 && guard < 60){
+    s -= 0.02;
+    el.style.transform = `scale(${s})`;
+    guard++;
+  }
+}
+
+/* Safe logo setter with fallback */
+function setLogo(imgEl, filename){
+  const base = 'images/teams/';
+  const file = filename && filename.trim() ? filename : 'missing_logo.png';
+  imgEl.onerror = () => { imgEl.onerror = null; imgEl.src = base + 'missing_logo.png'; };
+  imgEl.src = base + file;
+}
+
+/* Live listener */
+onSnapshot(doc(db, 'tvt', OVERLAY_ID), (snap) => {
+  const d = snap.data() || {};
+  const aName = d.teamAName || 'Team A';
+  const bName = d.teamBName || 'Team B';
+  const aSer  = (d.seriesA ?? 0);
+  const bSer  = (d.seriesB ?? 0);
+
+  nameAText.textContent = aName;
+  nameBText.textContent = bName;
+  serAText.textContent  = aSer;
+  serBText.textContent  = bSer;
+
+  setLogo(logoAImg, d.logoA);
+  setLogo(logoBImg, d.logoB);
+
+  fit(nameAText);
+  fit(nameBText);
+});
+
+// First paint fit in case placeholders are long
+window.addEventListener('load', () => { fit(nameAText); fit(nameBText); });
+</script>
+</body>
+</html>
