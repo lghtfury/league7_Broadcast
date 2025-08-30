@@ -7,12 +7,12 @@
 <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
 <style>
   :root{
-    /* Background and theme defaults. Panel push will override team colors. */
+    /* Background + default gradients (overridden by Firestore payload) */
     --bg:#141414;
     --a1:#6EA8FF; --a2:#2A3D8F;   /* Team A gradient default */
     --b1:#E38DFF; --b2:#6A2A8F;   /* Team B gradient default */
 
-    /* Gold for VS badge */
+    /* Metallic gold for VS + chip outline */
     --gold-hi:#F7E6A9;
     --gold-mid:#D4AF37;
     --gold-lo:#8C6A0E;
@@ -39,7 +39,6 @@
     padding:18px;
     box-sizing:border-box;
 
-    /* Paint border with gradient without images */
     border:4px solid transparent;
     background:
       linear-gradient(var(--bg), var(--bg)) padding-box,
@@ -54,17 +53,49 @@
   .left  { --pane-grad: linear-gradient(180deg, var(--a1), var(--a2)); }
   .right { --pane-grad: linear-gradient(180deg, var(--b1), var(--b2)); }
 
-  /* Top row inside pane: centered name and series on right */
+  /* Top row inside pane: chip on one side, centered name, optional right slot */
   .pane-top{
     display:grid;
-    grid-template-columns: 1fr auto; /* name grows, series hugs right */
+    grid-template-columns: auto 1fr auto; /* [chip] [name] [chip-or-empty] */
     align-items:center;
     min-height:90px;
     margin-bottom:8px;
   }
+
+  /* Corner Series Chip */
+  .chip{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-width:102px; padding:8px 12px; border-radius:12px;
+    background: var(--chip-grad);
+    border:1px solid rgba(212,175,55,.85); /* gold hairline */
+    box-shadow:
+      0 6px 14px rgba(0,0,0,.35),
+      inset 0 1px 0 rgba(255,255,255,.15);
+  }
+  /* left pane chip uses A gradient; right pane chip uses B gradient */
+  .left  .chip{ --chip-grad: linear-gradient(180deg, var(--a1), var(--a2)); }
+  .right .chip{ --chip-grad: linear-gradient(180deg, var(--b1), var(--b2)); }
+
+  .chip-label{
+    font-family:"IM Fell English SC", serif;
+    font-size:14px; letter-spacing:1px;
+    color:rgba(255,255,255,.85);
+    text-shadow:0 1px 3px rgba(0,0,0,.5);
+    line-height:1;
+    margin-bottom:2px;
+  }
+  .chip-value{
+    font-family:"IM Fell English SC", serif;
+    font-size:72px; line-height:.9;
+    color:#fff;
+    text-shadow:0 2px 8px rgba(0,0,0,.6);
+    min-width:40px; text-align:center;
+  }
+
+  /* Team name in the center cell of the top row */
   .team-name{
     justify-self:center;
-    max-width:82%;
+    max-width:90%;
     text-align:center;
     font-family:"IM Fell English SC", serif;
     font-weight:400;
@@ -75,16 +106,6 @@
     overflow:hidden;
     text-overflow:ellipsis;
     transform-origin:center center; /* for scale-down fit */
-  }
-  .series{
-    justify-self:end;
-    font-family:"IM Fell English SC", serif;
-    color:#fff;
-    text-shadow:0 2px 8px rgba(0,0,0,.6);
-    font-size:72px;
-    line-height:1;
-    min-width:70px;
-    text-align:right;
   }
 
   /* Logo area */
@@ -108,8 +129,6 @@
     position:relative;
     width:180px; height:180px;
     border-radius:50%;
-
-    /* Metallic ring look via layered gradients */
     background:
       radial-gradient(120% 120% at 30% 30%, rgba(255,255,255,.55), rgba(255,255,255,0) 40%) content-box,
       conic-gradient(from 210deg,
@@ -152,7 +171,7 @@
     filter: drop-shadow(0 3px 6px rgba(0,0,0,.85));
   }
 
-  /* Subtle update fade for readability on change */
+  /* Subtle update fade / pop for changes */
   .fade{ animation: fadein .15s ease-out }
   @keyframes fadein{ from{opacity:.35; transform:translateY(2px)} to{opacity:1; transform:none} }
 </style>
@@ -163,9 +182,19 @@
       <!-- Left pane -->
       <section class="pane left" aria-label="Team A panel">
         <div class="pane-top">
+          <!-- CHIP in top-left -->
+          <div class="chip" aria-label="Team A series">
+            <div class="chip-label">SERIES</div>
+            <div id="serA" class="chip-value">0</div>
+          </div>
+
+          <!-- Name centered -->
           <div id="nameA" class="team-name">Team A</div>
-          <div id="serA"  class="series" aria-label="Team A series">0</div>
+
+          <!-- Right slot empty (keeps name centered) -->
+          <div></div>
         </div>
+
         <div class="logo-wrap">
           <img id="logoA" class="logo" src="images/teams/missing_logo.png" alt="Team A logo">
         </div>
@@ -179,9 +208,19 @@
       <!-- Right pane -->
       <section class="pane right" aria-label="Team B panel">
         <div class="pane-top">
+          <!-- Left slot empty (keeps name centered) -->
+          <div></div>
+
+          <!-- Name centered -->
           <div id="nameB" class="team-name">Team B</div>
-          <div id="serB"  class="series" aria-label="Team B series">0</div>
+
+          <!-- CHIP in top-right -->
+          <div class="chip" aria-label="Team B series">
+            <div class="chip-label">SERIES</div>
+            <div id="serB" class="chip-value">0</div>
+          </div>
         </div>
+
         <div class="logo-wrap">
           <img id="logoB" class="logo" src="images/teams/missing_logo.png" alt="Team B logo">
         </div>
@@ -195,7 +234,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/fireba
 import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
 
-/* Use the same config as your control panel */
+/* Same config as your control panel */
 const firebaseConfig = {
   apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
   authDomain: "league7overlay.firebaseapp.com",
@@ -225,13 +264,12 @@ const el = {
   logoB: document.getElementById('logoB'),
 };
 
-/* Fit name into its box by scaling down; ellipsis is already set in CSS */
+/* Fit name by scaling down; ellipsis already set in CSS if it still overflows */
 function fitText(node, minScale=.6){
-  const parent = node.parentElement; // the grid cell
+  const parent = node.parentElement; // grid cell
   node.style.transform = 'scale(1)';
   let s = 1, guard = 0;
-  // allow name to use about 82% of the row width so series space is safe
-  while (node.scrollWidth > parent.clientWidth * 0.82 && s > minScale && guard < 60){
+  while (node.scrollWidth > parent.clientWidth * 0.90 && s > minScale && guard < 60){
     s -= 0.02;
     node.style.transform = `scale(${s})`;
     guard++;
@@ -246,7 +284,7 @@ function setLogo(imgEl, filename){
   imgEl.src = base + file;
 }
 
-/* Live color theming for borders */
+/* Live color theming for borders + chips */
 function setThemeColors(d){
   const a1 = d?.teamAColors?.primary   || getComputedStyle(document.documentElement).getPropertyValue('--a1') || '#6EA8FF';
   const a2 = d?.teamAColors?.secondary || getComputedStyle(document.documentElement).getPropertyValue('--a2') || '#2A3D8F';
