@@ -29,9 +29,10 @@
 
   h2{margin:.4rem 0 1rem 0; font-size:18px}
   label{display:block; font-size:12px; color:#8fa0c7; margin-bottom:6px}
-  input[type="text"], input[type="number"], input[type="password"], select{
+  input[type="text"], input[type="number"], input[type="password"], select, textarea{
     width:100%; padding:10px 12px; border-radius:10px; border:1px solid #232b4a; background:#0f1422; color:var(--text); outline:none;
   }
+  textarea{min-height:40px; resize:vertical}
   .stack{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
   .stack.right{justify-content:flex-end}
   .btn{
@@ -68,6 +69,10 @@
   .status{font-size:12px; color:#9fb0d8}
   .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
   .jsonbin{display:none}
+
+  /* simple grid helper for ticker inputs */
+  .grid-3 {display:grid; grid-template-columns: 1fr; gap:12px}
+  @media (min-width: 980px){ .grid-3 {grid-template-columns: 1fr 1fr 1fr;} }
 </style>
 </head>
 <body>
@@ -162,6 +167,31 @@
           <button id="btnBplus30"  class="btn gold">+30</button>
         </div>
       </div>
+
+      <!-- ===== NEW: Broadcast Ticker ===== -->
+      <div class="team-card" style="margin-top:12px;">
+        <h2>Broadcast Ticker</h2>
+        <div class="grid-3">
+          <div>
+            <label>Matchup</label>
+            <input id="tickerMatch" type="text" placeholder="Team A vs Team B">
+          </div>
+          <div>
+            <label>Commentators</label>
+            <input id="tickerCasters" type="text" placeholder="Caster 1, Caster 2">
+          </div>
+          <div>
+            <label>Extras (separate with |)</label>
+            <input id="tickerExtras" type="text" placeholder="Doors at 7|Best of 5">
+          </div>
+        </div>
+        <div class="stack right" style="margin-top:10px">
+          <button id="btnPushTicker" class="btn gold">Push Ticker</button>
+        </div>
+        <div class="tiny">Saved to Firestore → <code>ticker/{OVERLAY_ID}</code>. Overlays subscribe live.</div>
+      </div>
+      <!-- ===== /Broadcast Ticker ===== -->
+
     </div>
 
     <!-- BOTTOM: Preview -->
@@ -392,7 +422,7 @@ async function boot(){
 boot();
 </script>
 
-<!-- ===== FIREBASE push + live mirror + TVT wiring ===== -->
+<!-- ===== FIREBASE push + live mirror + TVT + TICKER wiring ===== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
 import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
@@ -421,6 +451,7 @@ await signInAnonymously(auth);
 const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || "main";
 const OVERLAY_REF = doc(db, "overlays", OVERLAY_ID);  // scoreboard doc
 const TVT_REF     = doc(db, "tvt", OVERLAY_ID);       // TVT doc
+const TICKER_REF  = doc(db, "ticker", OVERLAY_ID);    // NEW: ticker doc
 
 // Live mirror so panel shows overlay totals too
 onSnapshot(OVERLAY_REF, (snap) => {
@@ -447,7 +478,7 @@ function toLogoFile(teamName){
 }
 
 /* ===== Buttons ===== */
-// Push to Scoreboard (existing)
+// Push to Scoreboard
 document.getElementById("btnPushScoreboard").addEventListener("click", async () => {
   const payload = window.collectPayload();
   try {
@@ -460,7 +491,7 @@ document.getElementById("btnPushScoreboard").addEventListener("click", async () 
   }
 });
 
-// Push to Rosters (existing)
+// Push to Rosters (RTDB)
 const dbRT = getDatabase(app);
 document.getElementById("btnPushRosters").addEventListener("click", async () => {
   const teamA = (document.getElementById('teamAName').value || 'Team A').trim();
@@ -477,7 +508,7 @@ document.getElementById("btnPushRosters").addEventListener("click", async () => 
   }
 });
 
-// NEW: Push to TVT
+// Push to TVT
 document.getElementById("btnPushTVT").addEventListener("click", async () => {
   const matchId  = (document.getElementById('matchId').value || '').trim();
   const teamA    = (document.getElementById('teamAName').value || 'Team A').trim();
@@ -506,9 +537,38 @@ document.getElementById("btnPushTVT").addEventListener("click", async () => {
   }
 });
 
-// Leave Logos button as not-connected (placeholder)
-document.getElementById("btnPushLogos").addEventListener("click", () => {
-  window.setStatus("Logos: not connected yet", "warn");
+// NEW: Push Ticker (Firestore)
+document.getElementById("btnPushTicker").addEventListener("click", async () => {
+  const matchup  = (document.getElementById('tickerMatch').value || '').trim();
+  const casters  = (document.getElementById('tickerCasters').value || '').trim();
+  const extrasIn = (document.getElementById('tickerExtras').value || '').trim();
+
+  const payload = {
+    matchup,
+    casters,
+    extras: extrasIn ? extrasIn.split('|').map(s => s.trim()).filter(Boolean) : [],
+    updatedAt: serverTimestamp()
+  };
+
+  try {
+    window.setStatus("Pushing ticker…");
+    await setDoc(TICKER_REF, payload, { merge:true });
+    window.setStatus("Ticker pushed ✔", "ok");
+  } catch (e) {
+    console.error(e);
+    window.setStatus("Ticker push failed", "err");
+  }
+});
+
+// NEW: preload ticker inputs from Firestore
+onSnapshot(TICKER_REF, (snap) => {
+  const data = snap.data() || {};
+  const matchEl = document.getElementById('tickerMatch');
+  const castEl  = document.getElementById('tickerCasters');
+  const extraEl = document.getElementById('tickerExtras');
+  if (matchEl && data.matchup !== undefined) matchEl.value = data.matchup;
+  if (castEl  && data.casters !== undefined) castEl.value  = data.casters;
+  if (extraEl && Array.isArray(data.extras)) extraEl.value = data.extras.join(' | ');
 });
 </script>
 </body>
