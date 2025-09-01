@@ -4,12 +4,9 @@
   <meta charset="utf-8" />
   <title>Starting Soon</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <!-- Font -->
   <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
 
   <style>
-    /* ---- Base ---- */
     :root{
       --bg1:#0a0b0e; --bg2:#141414;
       --gold1:#ffd700; --gold2:#a67c00;
@@ -23,7 +20,7 @@
       color:var(--text);
     }
 
-    /* ---- Golden frame with soft glow ---- */
+    /* Frame */
     .frame{
       position:fixed; inset:2.2vh 2.2vh;
       border-radius:22px;
@@ -31,12 +28,10 @@
         linear-gradient(var(--bg2), var(--bg2)) padding-box,
         linear-gradient(90deg, var(--gold1), var(--gold2)) border-box;
       border:3px solid transparent;
-      box-shadow:
-        0 0 24px rgba(255,215,0,.12),
-        inset 0 0 18px rgba(255,215,0,.08);
+      box-shadow: 0 0 24px rgba(255,215,0,.12), inset 0 0 18px rgba(255,215,0,.08);
     }
 
-    /* ---- Center stack ---- */
+    /* Center stack */
     .stack{
       position:fixed; inset:0;
       display:flex; align-items:center; justify-content:center;
@@ -44,48 +39,32 @@
       padding:4vh 3vw;
     }
 
-    /* Logo */
     .logo{
       width:min(22vmin, 280px); height:auto;
       filter: drop-shadow(0 6px 20px rgba(255,215,0,.22));
       animation: float 6s ease-in-out infinite;
     }
-
-    /* Title + subtitle plaque */
     .plaque{
-      display:inline-block;
-      padding:.65em 1.1em;
-      border-radius:14px;
-      letter-spacing:.06em;
-      background:
-        linear-gradient(#0e1014, #0e1014) padding-box,
-        linear-gradient(90deg, var(--gold1), var(--gold2)) border-box;
-      border:2px solid transparent;
-      box-shadow: 0 0 20px rgba(255,215,0,.10);
+      display:inline-block; padding:.65em 1.1em; border-radius:14px; letter-spacing:.06em;
+      background: linear-gradient(#0e1014, #0e1014) padding-box,
+                  linear-gradient(90deg, var(--gold1), var(--gold2)) border-box;
+      border:2px solid transparent; box-shadow: 0 0 20px rgba(255,215,0,.10);
     }
     h1{
-      font-size: clamp(42px, 6.2vmin, 92px);
-      margin:0;
+      font-size: clamp(42px, 6.2vmin, 92px); margin:0;
       background: linear-gradient(45deg, var(--gold1), var(--gold2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .sub{
-      margin-top:.35em;
-      font-size: clamp(16px, 2.1vmin, 28px);
-      opacity:.9;
-    }
-
-    /* Decorative dividers */
+    .sub{ margin-top:.35em; font-size: clamp(16px, 2.1vmin, 28px); opacity:.9; }
     .rule{
       height:2px; width:min(70vw, 900px);
       background: linear-gradient(90deg, transparent, rgba(255,215,0,.75), transparent);
       filter: drop-shadow(0 0 8px rgba(255,215,0,.45));
     }
 
-    /* ---- Sparkles field ---- */
+    /* Sparkles */
     .sparkle{
-      position:fixed; inset:0; pointer-events:none;
+      position:fixed; inset:0; pointer-events:none; opacity:.55; mix-blend-mode: screen;
       background:
         radial-gradient(2px 2px at 20% 30%, rgba(255,215,0,.7), transparent 60%),
         radial-gradient(2px 2px at 80% 25%, rgba(255,215,0,.5), transparent 60%),
@@ -93,24 +72,48 @@
         radial-gradient(2px 2px at 35% 70%, rgba(255,215,0,.45), transparent 60%),
         radial-gradient(2px 2px at 50% 50%, rgba(255,215,0,.5), transparent 60%);
       animation: twinkle 8s linear infinite;
-      opacity:.55;
-      mix-blend-mode: screen;
     }
 
-    /* ---- Animations ---- */
+    /* ===== BOTTOM TICKER ===== */
+    .ticker-wrap{
+      position:fixed; left:2.2vh; right:2.2vh; bottom:2.2vh;
+      height:54px; border-radius:14px; overflow:hidden;
+      background: linear-gradient(#0b0d11,#0b0d11) padding-box,
+                  linear-gradient(90deg, var(--gold1), var(--gold2)) border-box;
+      border:2px solid transparent;
+      box-shadow: 0 6px 20px rgba(0,0,0,.35), inset 0 0 14px rgba(255,215,0,.08);
+    }
+    .ticker-track{
+      position:absolute; white-space:nowrap; will-change: transform; display:flex; align-items:center;
+      height:100%; gap:40px; padding:0 28px;
+      animation: ticker-scroll 30s linear infinite;
+      font-size: 20px; letter-spacing:.04em;
+    }
+    .ticker-item{
+      display:flex; align-items:center; gap:10px; opacity:.95;
+    }
+    .tag{
+      font-size:16px; padding:.15em .55em; line-height:1; border-radius:8px;
+      background: linear-gradient(90deg, var(--gold1), var(--gold2));
+      color:#0a0b0e; box-shadow: 0 0 10px rgba(255,215,0,.25);
+    }
+    .dot{ width:6px; height:6px; border-radius:50%; background: rgba(255,215,0,.85); box-shadow:0 0 8px rgba(255,215,0,.6); }
+
+    @keyframes ticker-scroll{
+      from{ transform: translateX(0); }
+      to  { transform: translateX(-50%); } /* we duplicate content so 50% loops seamlessly */
+    }
+
+    /* Animations */
     @keyframes twinkle{
       0%{ filter:brightness(1) blur(0px); transform:translateY(0); }
       50%{ filter:brightness(1.2) blur(.2px); transform:translateY(-.6vh); }
       100%{ filter:brightness(1) blur(0px); transform:translateY(0); }
     }
-    @keyframes float{
-      0%,100%{ transform:translateY(0); }
-      50%{ transform:translateY(-6px); }
-    }
+    @keyframes float{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-6px);} }
 
-    /* accessibility: reduce motion */
     @media (prefers-reduced-motion: reduce){
-      .sparkle, .logo, .stack{ animation: none !important; }
+      .sparkle, .logo, .ticker-track{ animation: none !important; }
     }
   </style>
 </head>
@@ -129,5 +132,64 @@
 
     <div class="rule" aria-hidden="true"></div>
   </main>
+
+  <!-- ===== TICKER ===== -->
+  <div class="ticker-wrap" role="contentinfo" aria-label="Broadcast ticker">
+    <div id="tickerTrack" class="ticker-track"></div>
+  </div>
+
+  <script>
+    // --- Ticker data contract ---
+    // Control panel can set:
+    // localStorage['l7.matchup']       = "Team A vs Team B"
+    // localStorage['l7.commentators']  = "Caster1, Caster2"   // comma-separated
+    // localStorage['l7.tickerItems']   = "Doors at 7|Best of 5|Follow @League7"  // pipe-separated
+    //
+    // If nothing is set, we show sensible defaults.
+
+    function buildTickerItems(){
+      const matchup = (localStorage.getItem('l7.matchup') || 'Team A vs Team B').trim();
+      const casters = (localStorage.getItem('l7.commentators') || 'Commentator 1, Commentator 2')
+                        .split(',')
+                        .map(s => s.trim())
+                        .filter(Boolean)
+                        .join(' & ');
+      const extras = (localStorage.getItem('l7.tickerItems') || 'Welcome to League 7|Follow: @League7|Grab a snack, we start soon')
+                        .split('|')
+                        .map(s => s.trim())
+                        .filter(Boolean);
+
+      // Assemble array like: [MATCH, CASTERS, ...extras]
+      const items = [
+        { tag:'MATCH', text: matchup },
+        { tag:'CASTERS', text: casters },
+        ...extras.map(t => ({ tag:'', text: t }))
+      ];
+
+      return items;
+    }
+
+    function renderTicker(){
+      const track = document.getElementById('tickerTrack');
+      const items = buildTickerItems();
+
+      // Build one sequence
+      const seq = items.map(it => {
+        const tag = it.tag ? `<span class="tag">${it.tag}</span>` : '';
+        return `<span class="ticker-item">${tag}${tag ? '<span class="dot"></span>' : ''}<span>${it.text}</span></span>`;
+      }).join('<span class="dot"></span>');
+
+      // Duplicate sequence so it scrolls seamlessly and never ends
+      track.innerHTML = seq + seq;
+    }
+
+    // Re-render when control panel updates localStorage (even across tabs)
+    window.addEventListener('storage', (e) => {
+      if (!e.key || !e.key.startsWith('l7.')) return;
+      renderTicker();
+    });
+
+    renderTicker();
+  </script>
 </body>
 </html>
