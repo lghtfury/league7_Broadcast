@@ -101,7 +101,7 @@
 
     @keyframes ticker-scroll{
       from{ transform: translateX(0); }
-      to  { transform: translateX(-50%); } /* we duplicate content so 50% loops seamlessly */
+      to  { transform: translateX(-50%); } /* duplicate content so 50% loops seamlessly */
     }
 
     /* Animations */
@@ -127,7 +127,8 @@
 
     <div class="plaque">
       <h1>Starting Soon</h1>
-      <div class="sub">Get settled. Match begins shortly.</div>
+      <!-- this text will be replaced by Firestore -->
+      <div id="ssSub" class="sub">Get settled. Match begins shortly.</div>
     </div>
 
     <div class="rule" aria-hidden="true"></div>
@@ -138,58 +139,59 @@
     <div id="tickerTrack" class="ticker-track"></div>
   </div>
 
-  <script>
-    // --- Ticker data contract ---
-    // Control panel can set:
-    // localStorage['l7.matchup']       = "Team A vs Team B"
-    // localStorage['l7.commentators']  = "Caster1, Caster2"   // comma-separated
-    // localStorage['l7.tickerItems']   = "Doors at 7|Best of 5|Follow @League7"  // pipe-separated
-    //
-    // If nothing is set, we show sensible defaults.
+  <!-- Firestore listener for ticker -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+    import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
-    function buildTickerItems(){
-      const matchup = (localStorage.getItem('l7.matchup') || 'Team A vs Team B').trim();
-      const casters = (localStorage.getItem('l7.commentators') || 'Commentator 1, Commentator 2')
-                        .split(',')
-                        .map(s => s.trim())
-                        .filter(Boolean)
-                        .join(' & ');
-      const extras = (localStorage.getItem('l7.tickerItems') || 'Welcome to League 7|Follow: @League7|Grab a snack, we start soon')
-                        .split('|')
-                        .map(s => s.trim())
-                        .filter(Boolean);
+    const firebaseConfig = {
+      apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
+      authDomain: "league7overlay.firebaseapp.com",
+      projectId: "league7overlay",
+      storageBucket: "league7overlay.firebasestorage.app",
+      messagingSenderId: "126648845416",
+      appId: "1:126648845416:web:06be2078b0c95bbb97a7dd",
+      measurementId: "G-QW2NG2BNF9",
+      databaseURL: "https://league7overlay-default-rtdb.firebaseio.com"
+    };
 
-      // Assemble array like: [MATCH, CASTERS, ...extras]
-      const items = [
-        { tag:'MATCH', text: matchup },
-        { tag:'CASTERS', text: casters },
-        ...extras.map(t => ({ tag:'', text: t }))
-      ];
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    await signInAnonymously(auth); // your rules require auth
 
-      return items;
-    }
+    const db = getFirestore(app);
+    const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || "startingsoon";
+    const TICKER_REF = doc(db, "ticker", OVERLAY_ID);
 
-    function renderTicker(){
+    function renderTicker(items){
       const track = document.getElementById('tickerTrack');
-      const items = buildTickerItems();
-
-      // Build one sequence
+      if (!track) return;
       const seq = items.map(it => {
         const tag = it.tag ? `<span class="tag">${it.tag}</span>` : '';
         return `<span class="ticker-item">${tag}${tag ? '<span class="dot"></span>' : ''}<span>${it.text}</span></span>`;
       }).join('<span class="dot"></span>');
-
-      // Duplicate sequence so it scrolls seamlessly and never ends
-      track.innerHTML = seq + seq;
+      track.innerHTML = seq + seq; // duplicate for seamless scroll
     }
 
-    // Re-render when control panel updates localStorage (even across tabs)
-    window.addEventListener('storage', (e) => {
-      if (!e.key || !e.key.startsWith('l7.')) return;
-      renderTicker();
-    });
+    onSnapshot(TICKER_REF, (snap) => {
+      const d = snap.data() || {};
+      // subtitle
+      const sub = document.getElementById('ssSub');
+      if (sub) sub.textContent = d.subtitle || "Grab a snack, we start soon";
 
-    renderTicker();
+      // items
+      const items = [
+        { tag:"MATCH",   text: d.matchup || "Team A vs Team B" },
+        { tag:"CASTERS", text: d.casters || "Commentator 1, Commentator 2" },
+        ...((Array.isArray(d.extras) ? d.extras : []).map(t => ({ tag:"", text:String(t) })))
+      ];
+      renderTicker(items);
+
+      console.log("[StartingSoon] listening to", `ticker/${OVERLAY_ID}`, "data:", d);
+    }, (err) => {
+      console.error("[StartingSoon] Firestore onSnapshot error:", err);
+    });
   </script>
 </body>
 </html>
