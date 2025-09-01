@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Starting Soon</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
+
+  <style>
+    /* ---- Base ---- */
+    :root{
+      --bg1:#0a0b0e; --bg2:#141414;
+      --gold1:#ffd700; --gold2:#a67c00;
+      --text:#e8ecf6;
+    }
+    html,body{
+      margin:0; padding:0; width:100%; height:100%;
+      background: radial-gradient(1200px 700px at 50% 40%, #121418 0%, #0d0f14 45%, #090b0f 100%);
+      overflow:hidden;
+      font-family:'IM Fell English SC', serif;
+      color:var(--text);
+    }
+
+    /* ---- Golden frame with soft glow ---- */
+    .frame{
+      position:fixed; inset:2.2vh 2.2vh;
+      border-radius:22px;
+      background:
+        linear-gradient(var(--bg2), var(--bg2)) padding-box,
+        linear-gradient(90deg, var(--gold1), var(--gold2)) border-box;
+      border:3px solid transparent;
+      box-shadow:
+        0 0 24px rgba(255,215,0,.12),
+        inset 0 0 18px rgba(255,215,0,.08);
+    }
+
+    /* ---- Center stack ---- */
+    .stack{
+      position:fixed; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      flex-direction:column; gap:2.2vh; text-align:center;
+      padding:4vh 3vw;
+    }
+
+    /* Logo */
+    .logo{
+      width:min(22vmin, 280px); height:auto;
+      filter: drop-shadow(0 6px 20px rgba(255,215,0,.22));
+      animation: float 6s ease-in-out infinite;
+    }
+
+    /* Title + subtitle plaque */
+    .plaque{
+      display:inline-block;
+      padding:.65em 1.1em;
+      border-radius:14px;
+      letter-spacing:.06em;
+      background:
+        linear-gradient(#0e1014, #0e1014) padding-box,
+        linear-gradient(90deg, var(--gold1), var(--gold2)) border-box;
+      border:2px solid transparent;
+      box-shadow: 0 0 20px rgba(255,215,0,.10);
+    }
+    h1{
+      font-size: clamp(42px, 6.2vmin, 92px);
+      margin:0;
+      background: linear-gradient(45deg, var(--gold1), var(--gold2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 0 rgba(0,0,0,0); /* keeps crisp edges */
+    }
+    .sub{
+      margin-top:.35em;
+      font-size: clamp(16px, 2.1vmin, 28px);
+      opacity:.9;
+    }
+
+    /* Decorative dividers */
+    .rule{
+      height:2px; width:min(70vw, 900px);
+      background: linear-gradient(90deg, transparent, rgba(255,215,0,.75), transparent);
+      filter: drop-shadow(0 0 8px rgba(255,215,0,.45));
+    }
+
+    /* ---- Sparkles field ---- */
+    .sparkle{
+      position:fixed; inset:0; pointer-events:none;
+      background:
+        radial-gradient(2px 2px at 20% 30%, rgba(255,215,0,.7), transparent 60%),
+        radial-gradient(2px 2px at 80% 25%, rgba(255,215,0,.5), transparent 60%),
+        radial-gradient(2px 2px at 65% 75%, rgba(255,215,0,.6), transparent 60%),
+        radial-gradient(2px 2px at 35% 70%, rgba(255,215,0,.45), transparent 60%),
+        radial-gradient(2px 2px at 50% 50%, rgba(255,215,0,.5), transparent 60%);
+      animation: twinkle 8s linear infinite;
+      opacity:.55;
+      mix-blend-mode: screen;
+    }
+
+    /* ---- Animations ---- */
+    @keyframes twinkle{
+      0%{ filter:brightness(1) blur(0px); transform:translateY(0); }
+      50%{ filter:brightness(1.2) blur(.2px); transform:translateY(-.6vh); }
+      100%{ filter:brightness(1) blur(0px); transform:translateY(0); }
+    }
+    @keyframes float{
+      0%,100%{ transform:translateY(0); }
+      50%{ transform:translateY(-6px); }
+    }
+
+    /* Small safety for ultra-wide */
+    @media (min-aspect-ratio: 21/9){
+      .frame{ inset:2vh 8vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sparkle" aria-hidden="true"></div>
+  <div class="frame"></div>
+
+  <main class="stack" role="main" aria-label="Stream starting soon">
+    <img class="logo" src="images/assets/L7_logo_full.png" alt="League 7 Logo">
+    <div class="rule" aria-hidden="true"></div>
+
+    <div class="plaque">
+      <h1>Starting Soon</h1>
+      <div class="sub">Get settled. Match begins shortly.</div>
+    </div>
+
+    <div class="rule" aria-hidden="true"></div>
+  </main>
+</body>
+</html>
