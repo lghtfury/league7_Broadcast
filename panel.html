@@ -94,7 +94,7 @@
         </div>
       </div>
 
-      <!-- NEW: Match Series quick inputs -->
+      <!-- Match Series quick inputs -->
       <div class="team-card" style="margin-bottom:12px;">
         <h2>Match Series</h2>
         <div class="stack" style="gap:16px; align-items:flex-end; flex-wrap:wrap">
@@ -168,7 +168,7 @@
         </div>
       </div>
 
-      <!-- ===== NEW: Broadcast Ticker ===== -->
+      <!-- ===== Broadcast Ticker ===== -->
       <div class="team-card" style="margin-top:12px;">
         <h2>Broadcast Ticker</h2>
         <div class="grid-3">
@@ -182,7 +182,7 @@
           </div>
           <div>
             <label>Extras (separate with |)</label>
-            <input id="tickerExtras" type="text" placeholder="Doors at 7|Best of 5">
+            <input id="tickerExtras" type="text" placeholder="Follow @League7qc|Best of 5">
           </div>
         </div>
         <div class="stack right" style="margin-top:10px">
@@ -335,26 +335,6 @@ function setBinStatus(msg, kind){
   if (kind) el.classList.add(kind);
 }
 
-/* ===== JSONBin read (kept for parity; UI hidden) ===== */
-const urlLatest = bin => `https://api.jsonbin.io/v3/b/${bin}/latest`;
-async function doRead(){
-  savePanelCfg();
-  const bin = $('#binId')?.value?.trim?.();
-  if (!bin) return setBinStatus('Set Bin ID','warn');
-  try{
-    setBinStatus('Reading…');
-    const r = await fetch(urlLatest(bin), { cache:'no-store' });
-    if(!r.ok) throw new Error(r.status);
-    const data = await r.json();
-    $('#lastJson').textContent = JSON.stringify(data?.record || data, null, 2);
-    setBinStatus('Read OK', 'ok');
-  }catch(e){
-    console.error(e);
-    setBinStatus('Read failed','err');
-  }
-}
-$('#btnTest')?.addEventListener('click', doRead);
-
 /* ===== Google Sheets: auto-populate on Match ID change ===== */
 let MATCH_ROWS = []; // [{id, teamA, teamB}]
 let TEAM_COLORS = new Map(); // name -> {primary, secondary}
@@ -402,6 +382,10 @@ function onMatchPicked(){
   const setP = (picker,val)=>{ if(hexOK(val)){ picker.value = val; picker.dispatchEvent(new Event('input')); } };
   setP($('#A1picker'), A.primary); setP($('#A2picker'), A.secondary);
   setP($('#B1picker'), B.primary); setP($('#B2picker'), B.secondary);
+
+  /* NEW: prefill ticker matchup to mirror selected teams */
+  const tm = document.getElementById('tickerMatch');
+  if (tm) tm.value = `${m.teamA || 'Team A'} vs ${m.teamB || 'Team B'}`;
 
   setStatus(`Loaded from sheet: ${id}`, 'ok');
 }
@@ -451,7 +435,8 @@ await signInAnonymously(auth);
 const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || "main";
 const OVERLAY_REF = doc(db, "overlays", OVERLAY_ID);  // scoreboard doc
 const TVT_REF     = doc(db, "tvt", OVERLAY_ID);       // TVT doc
-const TICKER_REF  = doc(db, "ticker", OVERLAY_ID);    // NEW: ticker doc
+const TICKER_REF  = doc(db, "ticker", OVERLAY_ID);    // ticker doc
+const SOCIAL_HANDLE = "@League7qc";                   // NEW: default social
 
 // Live mirror so panel shows overlay totals too
 onSnapshot(OVERLAY_REF, (snap) => {
@@ -499,6 +484,7 @@ document.getElementById("btnPushRosters").addEventListener("click", async () => 
   try {
     window.setStatus("Pushing rosters…");
     await rtdbSet(ref(dbRT, "/overlay/selectedTeams"), { teamA, teamB, updatedAt: Date.now() });
+    // NOTE: these two localStorage lines were in your original code; remove if you want zero localStorage.
     localStorage.setItem("teamA_name", teamA);
     localStorage.setItem("teamB_name", teamB);
     window.setStatus(`Rosters pushed ✔  ${teamA} vs ${teamB}`, "ok");
@@ -508,7 +494,7 @@ document.getElementById("btnPushRosters").addEventListener("click", async () => 
   }
 });
 
-// Push to TVT
+// Push to TVT (also sync ticker matchup)
 document.getElementById("btnPushTVT").addEventListener("click", async () => {
   const matchId  = (document.getElementById('matchId').value || '').trim();
   const teamA    = (document.getElementById('teamAName').value || 'Team A').trim();
@@ -530,6 +516,11 @@ document.getElementById("btnPushTVT").addEventListener("click", async () => {
   try{
     window.setStatus("Pushing TVT…");
     await setDoc(TVT_REF, payload, { merge:true });
+
+    // NEW: keep ticker matchup synced to current teams
+    const syncedMatchup = `${teamA} vs ${teamB}`;
+    await setDoc(TICKER_REF, { matchup: syncedMatchup, updatedAt: serverTimestamp() }, { merge: true });
+
     window.setStatus("TVT pushed ✔", "ok");
   }catch(e){
     console.error(e);
@@ -537,7 +528,7 @@ document.getElementById("btnPushTVT").addEventListener("click", async () => {
   }
 });
 
-// NEW: Push Ticker (Firestore)
+// Push Ticker (Firestore) with default social if Extras blank
 document.getElementById("btnPushTicker").addEventListener("click", async () => {
   const matchup  = (document.getElementById('tickerMatch').value || '').trim();
   const casters  = (document.getElementById('tickerCasters').value || '').trim();
@@ -546,7 +537,8 @@ document.getElementById("btnPushTicker").addEventListener("click", async () => {
   const payload = {
     matchup,
     casters,
-    extras: extrasIn ? extrasIn.split('|').map(s => s.trim()).filter(Boolean) : [],
+    extras: extrasIn ? extrasIn.split('|').map(s => s.trim()).filter(Boolean)
+                     : [`Follow ${SOCIAL_HANDLE}`],
     updatedAt: serverTimestamp()
   };
 
@@ -560,7 +552,7 @@ document.getElementById("btnPushTicker").addEventListener("click", async () => {
   }
 });
 
-// NEW: preload ticker inputs from Firestore
+// Preload ticker inputs from Firestore
 onSnapshot(TICKER_REF, (snap) => {
   const data = snap.data() || {};
   const matchEl = document.getElementById('tickerMatch');
@@ -569,6 +561,15 @@ onSnapshot(TICKER_REF, (snap) => {
   if (matchEl && data.matchup !== undefined) matchEl.value = data.matchup;
   if (castEl  && data.casters !== undefined) castEl.value  = data.casters;
   if (extraEl && Array.isArray(data.extras)) extraEl.value = data.extras.join(' | ');
+});
+
+// QoL: Enter key in any ticker field triggers push
+["tickerMatch","tickerCasters","tickerExtras"].forEach(id=>{
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('keydown', e=>{
+    if (e.key === 'Enter') document.getElementById("btnPushTicker").click();
+  });
 });
 </script>
 </body>
