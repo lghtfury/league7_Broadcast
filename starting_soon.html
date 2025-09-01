@@ -89,9 +89,7 @@
       animation: ticker-scroll 30s linear infinite;
       font-size: 20px; letter-spacing:.04em;
     }
-    .ticker-item{
-      display:flex; align-items:center; gap:10px; opacity:.95;
-    }
+    .ticker-item{ display:flex; align-items:center; gap:10px; opacity:.95; }
     .tag{
       font-size:16px; padding:.15em .55em; line-height:1; border-radius:8px;
       background: linear-gradient(90deg, var(--gold1), var(--gold2));
@@ -122,12 +120,12 @@
   <div class="frame"></div>
 
   <main class="stack" role="main" aria-label="Stream starting soon">
+    <!-- keep this path matching your repo; you used /images/assests/... -->
     <img class="logo" src="images/assests/L7_logo_full.png" alt="League 7 Logo">
     <div class="rule" aria-hidden="true"></div>
 
     <div class="plaque">
       <h1>Starting Soon</h1>
-      <!-- this text will be replaced by Firestore -->
       <div id="ssSub" class="sub">Get settled. Match begins shortly.</div>
     </div>
 
@@ -145,6 +143,7 @@
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
     import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
+    /* Firebase config (unchanged) */
     const firebaseConfig = {
       apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
       authDomain: "league7overlay.firebaseapp.com",
@@ -156,12 +155,14 @@
       databaseURL: "https://league7overlay-default-rtdb.firebaseio.com"
     };
 
+    /* App + auth (your rules require auth != null) */
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    await signInAnonymously(auth); // your rules require auth
+    await signInAnonymously(auth).catch(err => console.error("[SS] anon auth failed", err));
 
     const db = getFirestore(app);
-    const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || "startingsoon";
+    const DEFAULT_OVERLAY = "startingsoon";
+    const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || DEFAULT_OVERLAY;
     const TICKER_REF = doc(db, "ticker", OVERLAY_ID);
 
     function renderTicker(items){
@@ -174,24 +175,34 @@
       track.innerHTML = seq + seq; // duplicate for seamless scroll
     }
 
-    onSnapshot(TICKER_REF, (snap) => {
-      const d = snap.data() || {};
-      // subtitle
-      const sub = document.getElementById('ssSub');
-      if (sub) sub.textContent = d.subtitle || "Grab a snack, we start soon";
+    // Initial defaults so page isn't empty before Firestore returns
+    renderTicker([
+      { tag:"MATCH",   text:"Team A vs Team B" },
+      { tag:"CASTERS", text:"Commentator 1, Commentator 2" },
+      { tag:"",        text:"Follow @League7qc" }
+    ]);
 
-      // items
-      const items = [
-        { tag:"MATCH",   text: d.matchup || "Team A vs Team B" },
-        { tag:"CASTERS", text: d.casters || "Commentator 1, Commentator 2" },
-        ...((Array.isArray(d.extras) ? d.extras : []).map(t => ({ tag:"", text:String(t) })))
-      ];
-      renderTicker(items);
+    // Live subscription
+    onSnapshot(
+      TICKER_REF,
+      (snap) => {
+        const d = snap.data() || {};
+        // Subtitle
+        const sub = document.getElementById('ssSub');
+        if (sub) sub.textContent = d.subtitle || "Grab a snack, we start soon";
 
-      console.log("[StartingSoon] listening to", `ticker/${OVERLAY_ID}`, "data:", d);
-    }, (err) => {
-      console.error("[StartingSoon] Firestore onSnapshot error:", err);
-    });
+        // Build items
+        const items = [
+          { tag:"MATCH",   text: d.matchup  || "Team A vs Team B" },
+          { tag:"CASTERS", text: d.casters  || "Commentator 1, Commentator 2" },
+          ...((Array.isArray(d.extras) ? d.extras : []).map(t => ({ tag:"", text:String(t) })))
+        ];
+        renderTicker(items);
+
+        console.log("[StartingSoon] listening:", `ticker/${OVERLAY_ID}`, d);
+      },
+      (err) => console.error("[StartingSoon] Firestore onSnapshot error:", err)
+    );
   </script>
 </body>
 </html>
