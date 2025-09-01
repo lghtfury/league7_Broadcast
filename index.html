@@ -17,17 +17,36 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       min-height: 100vh;
       text-align: center;
+      padding: 2em;
     }
 
     h1 {
       font-size: 3em;
-      margin-bottom: 1.5em;
+      margin-bottom: 1em;
       background: linear-gradient(45deg, #ffd700, #a67c00);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+    }
+
+    h2 {
+      font-size: 2em;
+      margin: 1.5em 0 0.75em;
+      color: #ffd700;
+      text-decoration: underline;
+    }
+
+    .warning {
+      margin: 0.5em 0 1.5em;
+      padding: 0.5em 1em;
+      font-size: 1em;
+      font-style: italic;
+      color: #0a0b0e;
+      background: linear-gradient(90deg, #ffd700, #a67c00);
+      border-radius: 8px;
+      display: inline-block;
     }
 
     .overlay-list {
@@ -45,7 +64,7 @@
     .overlay-list a {
       display: block;
       text-decoration: none;
-      font-size: 1.4em;
+      font-size: 1.3em;
       color: #e8ecf6;
       padding: 0.75em 1em;
       border: 2px solid transparent;
@@ -63,11 +82,18 @@
 </head>
 <body>
   <h1>League 7 Broadcast Hub</h1>
+
+  <h2>Commentator Links</h2>
+  <ul class="overlay-list">
+    <li><a href="roster.html" target="_blank">Roster Comparison Chart</a></li>
+    <li><a href="teamvsteam.html" target="_blank">Team vs Team Series Screen</a></li>
+  </ul>
+
+  <h2>Producer Links</h2>
+  <div class="warning">⚠️ Producer Use Only</div>
   <ul class="overlay-list">
     <li><a href="gameplay_overlay.html" target="_blank">Gameplay Overlay</a></li>
     <li><a href="panel.html" target="_blank">Control Panel</a></li>
-    <li><a href="roster.html" target="_blank">Roster Comparison Chart</a></li>
-    <li><a href="teamvsteam.html" target="_blank">Team vs Team Series Screen</a></li>
   </ul>
 </body>
 </html>
