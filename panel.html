@@ -86,7 +86,12 @@
         </div>
         <div class="stack right">
           <button id="btnClearAll" class="btn ghost">Clear Scores</button>
-          <button id="btnPushScoreboard" class="btn primary" title="Push current scoreboard data to overlay">Push to Scoreboard</button>
+
+          <!-- NEW: Flip buttons -->
+          <button id="btnFlipTeams" class="btn">Flip Teams</button>
+          <button id="btnFlipTeamsPush" class="btn primary">Flip & Push</button>
+
+          <button id="btnPushScoreboard" class="btn" title="Push current scoreboard data to overlay">Push to Scoreboard</button>
           <button id="btnPushRosters" class="btn ghost" title="Push selected teams to Rosters overlay">Push to Rosters</button>
           <button id="btnPushTVT" class="btn ghost" title="Push Team vs Team overlay">Push to TVT</button>
           <button id="btnPushLogos" class="btn ghost" title="Not connected yet">Push to Logos</button>
@@ -383,7 +388,7 @@ function onMatchPicked(){
   setP($('#A1picker'), A.primary); setP($('#A2picker'), A.secondary);
   setP($('#B1picker'), B.primary); setP($('#B2picker'), B.secondary);
 
-  /* NEW: prefill ticker matchup to mirror selected teams */
+  /* prefill ticker matchup to mirror selected teams */
   const tm = document.getElementById('tickerMatch');
   if (tm) tm.value = `${m.teamA || 'Team A'} vs ${m.teamB || 'Team B'}`;
 
@@ -394,6 +399,15 @@ async function boot(){
   loadPanelCfg();
   renderPreview();
   syncTotalsFromInputs();
+
+  // NEW: local-only flip button wiring (Flip Teams)
+  const flipBtn = document.getElementById('btnFlipTeams');
+  if (flipBtn) {
+    flipBtn.addEventListener('click', () => {
+      window.flipTeams?.();
+    });
+  }
+
   try{
     await Promise.all([loadTeamColors(), loadMatches()]);
     $('#matchId').addEventListener('change', onMatchPicked);
@@ -404,6 +418,39 @@ async function boot(){
   }
 }
 boot();
+
+/* ======== NEW: Flip Teams core logic (names + scores + series) ======== */
+function swapVals(a, b){
+  const t = a.value;
+  a.value = b.value;
+  b.value = t;
+}
+
+/**
+ * Flip POV: swap team names, map scores, and series counts.
+ * Leaves colors/logos alone so gradients/icons don't jump around.
+ */
+function flipTeams(){
+  const aName = document.getElementById('teamAName');
+  const bName = document.getElementById('teamBName');
+  const sA    = document.getElementById('scoreA');
+  const sB    = document.getElementById('scoreB');
+  const serA  = document.getElementById('seriesA');
+  const serB  = document.getElementById('seriesB');
+
+  if (aName && bName) swapVals(aName, bName);
+  if (sA && sB)       swapVals(sA, sB);
+  if (typeof syncTotalsFromInputs === 'function') syncTotalsFromInputs();
+  if (serA && serB)   swapVals(serA, serB);
+
+  const tm = document.getElementById('tickerMatch');
+  if (tm) tm.value = `${aName?.value || 'Team A'} vs ${bName?.value || 'Team B'}`;
+
+  if (typeof setStatus === 'function') setStatus('Teams flipped', 'ok');
+}
+window.flipTeams = flipTeams; // expose for module script
+window.collectPayload = collectPayload; // already used elsewhere
+window.setStatus = setStatus;
 </script>
 
 <!-- ===== FIREBASE push + live mirror + TVT + TICKER wiring ===== -->
@@ -436,7 +483,7 @@ const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || "main"
 const OVERLAY_REF = doc(db, "overlays", OVERLAY_ID);  // scoreboard doc
 const TVT_REF     = doc(db, "tvt", OVERLAY_ID);       // TVT doc
 const TICKER_REF  = doc(db, "ticker", OVERLAY_ID);    // ticker doc
-const SOCIAL_HANDLE = "@League7qc";                   // NEW: default social
+const SOCIAL_HANDLE = "@League7qc";                   // default social
 
 // Live mirror so panel shows overlay totals too
 onSnapshot(OVERLAY_REF, (snap) => {
@@ -484,7 +531,6 @@ document.getElementById("btnPushRosters").addEventListener("click", async () => 
   try {
     window.setStatus("Pushing rosters…");
     await rtdbSet(ref(dbRT, "/overlay/selectedTeams"), { teamA, teamB, updatedAt: Date.now() });
-    // NOTE: these two localStorage lines were in your original code; remove if you want zero localStorage.
     localStorage.setItem("teamA_name", teamA);
     localStorage.setItem("teamB_name", teamB);
     window.setStatus(`Rosters pushed ✔  ${teamA} vs ${teamB}`, "ok");
@@ -517,7 +563,7 @@ document.getElementById("btnPushTVT").addEventListener("click", async () => {
     window.setStatus("Pushing TVT…");
     await setDoc(TVT_REF, payload, { merge:true });
 
-    // NEW: keep ticker matchup synced to current teams
+    // keep ticker matchup synced to current teams
     const syncedMatchup = `${teamA} vs ${teamB}`;
     await setDoc(TICKER_REF, { matchup: syncedMatchup, updatedAt: serverTimestamp() }, { merge: true });
 
@@ -563,13 +609,27 @@ onSnapshot(TICKER_REF, (snap) => {
   if (extraEl && Array.isArray(data.extras)) extraEl.value = data.extras.join(' | ');
 });
 
-// QoL: Enter key in any ticker field triggers push
+// QoL: Enter in any ticker field triggers push
 ["tickerMatch","tickerCasters","tickerExtras"].forEach(id=>{
   const el = document.getElementById(id);
   if (!el) return;
   el.addEventListener('keydown', e=>{
     if (e.key === 'Enter') document.getElementById("btnPushTicker").click();
   });
+});
+
+/* ===== NEW: Flip & Push button wiring (uses window.flipTeams) ===== */
+document.getElementById("btnFlipTeamsPush").addEventListener("click", async () => {
+  try{
+    window.flipTeams?.(); // swap locally first
+    window.setStatus("Pushing…");
+    const payload = window.collectPayload();
+    await setDoc(OVERLAY_REF, payload, { merge: true });
+    window.setStatus("Pushed ✔", "ok");
+  }catch(e){
+    console.error(e);
+    window.setStatus("Push failed", "err");
+  }
 });
 </script>
 </body>
