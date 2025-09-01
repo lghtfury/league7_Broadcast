@@ -99,7 +99,7 @@
 
     @keyframes ticker-scroll{
       from{ transform: translateX(0); }
-      to  { transform: translateX(-50%); } /* duplicate content so 50% loops seamlessly */
+      to  { transform: translateX(-50%); }
     }
 
     /* Animations */
@@ -155,13 +155,14 @@
       databaseURL: "https://league7overlay-default-rtdb.firebaseio.com"
     };
 
-    /* App + auth (your rules require auth != null) */
+    /* App + auth */
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     await signInAnonymously(auth).catch(err => console.error("[SS] anon auth failed", err));
 
     const db = getFirestore(app);
-    const DEFAULT_OVERLAY = "startingsoon";
+    // CHANGED: default overlay set to "main" so this listens to ticker/main
+    const DEFAULT_OVERLAY = "main";
     const OVERLAY_ID = new URLSearchParams(location.search).get("overlay") || DEFAULT_OVERLAY;
     const TICKER_REF = doc(db, "ticker", OVERLAY_ID);
 
@@ -175,7 +176,7 @@
       track.innerHTML = seq + seq; // duplicate for seamless scroll
     }
 
-    // Initial defaults so page isn't empty before Firestore returns
+    // Initial defaults so page is not empty before Firestore returns
     renderTicker([
       { tag:"MATCH",   text:"Team A vs Team B" },
       { tag:"CASTERS", text:"Commentator 1, Commentator 2" },
