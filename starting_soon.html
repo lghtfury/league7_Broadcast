@@ -42,6 +42,8 @@
       display:flex; align-items:center; justify-content:center;
       flex-direction:column; gap:2.2vh; text-align:center;
       padding:4vh 3vw;
+      /* NEW: after hoops rise, lift the stack up */
+      animation: stack-shift 900ms cubic-bezier(.2,.8,.2,1) 1.6s forwards;
     }
 
     /* Logo */
@@ -115,6 +117,12 @@
       to   { transform: translate(-50%, 0);    opacity: .95; }
     }
 
+    /* NEW: after hoops, lift everything else up a bit */
+    @keyframes stack-shift{
+      0%   { transform: translateY(0); opacity:1; }
+      100% { transform: translateY(-10vh); opacity:1; }
+    }
+
     /* ---- Animations ---- */
     @keyframes twinkle{
       0%{ filter:brightness(1) blur(0px); transform:translateY(0); }
@@ -124,6 +132,11 @@
     @keyframes float{
       0%,100%{ transform:translateY(0); }
       50%{ transform:translateY(-6px); }
+    }
+
+    /* accessibility: reduce motion */
+    @media (prefers-reduced-motion: reduce){
+      .sparkle, .logo, .hoops, .stack{ animation: none !important; }
     }
   </style>
 </head>
