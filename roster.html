@@ -29,8 +29,11 @@
   .logo{width:86px;height:86px;object-fit:contain;display:none}
   .logo.visible{display:block}
   .meta{display:grid;gap:8px;min-width:0}
-  .team-name{font-family:"IM Fell English SC",serif;font-size:44px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-    text-shadow:0 2px 0 rgba(0,0,0,.4)}
+  .team-name{
+    font-family:"IM Fell English SC",serif;font-size:44px;line-height:1;
+    white-space:nowrap;overflow:hidden;text-overflow:clip;max-width:100%;
+    text-shadow:0 2px 0 rgba(0,0,0,.4)
+  }
   .tag{font-weight:600;font-size:14px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
   .roster{position:relative;z-index:1;display:grid;gap:10px;padding:22px 26px 28px}
   .pill{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.25);
@@ -50,7 +53,12 @@
     -webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 3px 0 rgba(0,0,0,.45)}
   .status{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted)}
   .hide{display:none!important}
-  @media (max-width:1919px),(max-height:1079px){#overlay{width:100vw;height:100vh}.team-name{font-size:clamp(28px,4vw,44px)}.player{font-size:clamp(16px,1.9vw,20px)}.vs{font-size:clamp(64px,7vw,86px)}}
+  @media (max-width:1919px),(max-height:1079px){
+    #overlay{width:100vw;height:100vh}
+    .team-name{font-size:clamp(28px,4vw,44px)}
+    .player{font-size:clamp(16px,1.9vw,20px)}
+    .vs{font-size:clamp(64px,7vw,86px)}
+  }
 </style>
 </head>
 <body>
@@ -97,11 +105,8 @@ const slug = s => String(s||"")
 
 function logoCandidates(team){
   const out = [];
-  // If a URL is ever provided in the sheet, try it first
   if (team?.logo && !/^(?:-|n\/a)$/i.test(team.logo)) out.push(team.logo.trim());
-  // Prefer name-based file
   if (team?.name) out.push(`./images/teams/${slug(team.name)}.png`);
-  // Tag-based file as a fallback
   if (team?.tag) out.push(`./images/teams/${slug(team.tag)}.png`);
   return out.filter(Boolean);
 }
@@ -160,10 +165,10 @@ async function loadTeamTableSafe(){
       const primary   = (row[2]||"").trim();
       const secondary = (row[3]||"").trim();
 
-      const captainRaw = (row[4]||"").trim();           // E
+      const captainRaw = (row[4]||"").trim();
       const captain = cleanName(captainRaw);
       const others = [];
-      for(let i=5;i<=14 && i<row.length;i++){           // F..O
+      for(let i=5;i<=14 && i<row.length;i++){
         const v=(row[i]||"").trim();
         if(v && v.toLowerCase()!=="n/a" && v!=="-") others.push(cleanName(v));
       }
@@ -190,14 +195,56 @@ function findTeam(list, query){
       || null;
 }
 
+/* === Autoshrink helper for single-line titles === */
+function fitTextOneLine(el, {max=44, min=18, step=0.5, scaleFloor=0.85} = {}){
+  if(!el) return;
+  // reset previous tweaks
+  el.style.fontSize = `${max}px`;
+  el.style.transform = "";
+  el.style.transformOrigin = "";
+  el.style.letterSpacing = "";
+
+  const fits = () => el.scrollWidth <= el.clientWidth;
+
+  // Downsize until it fits or hits min
+  let size = max;
+  while(!fits() && size > min){
+    size -= step;
+    el.style.fontSize = `${size}px`;
+  }
+
+  // Last resort: slight horizontal scale if still too long
+  if(!fits()){
+    const scale = Math.max(scaleFloor, el.clientWidth / el.scrollWidth);
+    el.style.transformOrigin = "left center";
+    el.style.transform = `scale(${scale})`;
+  }
+}
+
+/* Refit on container resize for responsive/OBS scaling */
+const fitObservers = new WeakMap();
+function watchFit(el, opts){
+  if(!el) return;
+  if(fitObservers.has(el)) return;
+  const ro = new ResizeObserver(()=>fitTextOneLine(el, opts));
+  ro.observe(el);
+  fitObservers.set(el, ro);
+}
+
 function renderSide(prefix, team){
   const nameEl = document.getElementById(`name${prefix}`);
   const tagEl  = document.getElementById(`tag${prefix}`);
   const logoEl = document.getElementById(`logo${prefix}`);
   const listEl = document.getElementById(`list${prefix}`);
 
+  // Set name/tag first, then fit
   nameEl.textContent = team?.name || `Team ${prefix}`;
   tagEl.textContent  = team?.tag || "";
+
+  // Shrink to fit the row next to the logo
+  fitTextOneLine(nameEl, {max:44, min:18, step:0.5, scaleFloor:0.85});
+  watchFit(nameEl, {max:44, min:18, step:0.5, scaleFloor:0.85});
+
   setLogo(logoEl, team || {});
   setPanelGradient(`bg${prefix}`, team?.primary, team?.secondary);
 
@@ -251,7 +298,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-try { await signInAnonymously(getAuth(app)); } catch(e) { /* ok if rules allow read */ }
+try { await signInAnonymously(getAuth(app)); } catch(e) { /* fine if rules allow read */ }
 const db = getDatabase(app);
 
 const loadTeamTableSafe = window.loadTeamTableSafe || (async()=>[]);
