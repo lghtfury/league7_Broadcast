@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>League 7 — Deck Board (WC + Triwizard)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    /* Theme */
+    --bg: #0a0b0e;                /* page bg (hidden in OBS if you want transparency) */
+    --cardBack: #0b0c10;          /* flat black back */
+    --panel: rgba(14,17,22,0.88); /* header bar */
+    --text: #e8ecf6;
+    --muted:#99a2b5;
+    --line: rgba(255,255,255,0.12);
+    --gold1:#ffd700; --gold2:#a67c00;
+
+    /* Status accents (swap later with your exact hexes) */
+    --promo:#2ecc71;      /* Promotion (Triwizard Top-2) */
+    --releg:#ff6b6b;      /* Relegation (WC Bottom-2) */
+    --champ:#ffd700;      /* Championship (WC Top-4) */
+
+    /* Layout */
+    --radius: 20px;
+    --gap: 18px;
+    --colW: 880px;        /* column width in 1920x1080 */
+    --sectionGap: 20px;
+    --cardW: 200px;
+    --cardH: 280px;
+    --trim: 2px;          /* gold trim thickness */
+    --flipMs: 360ms;
+  }
+
+  html,body{margin:0;padding:0;width:100%;height:100%;background:var(--bg);color:var(--text);}
+  *{box-sizing:border-box}
+
+  /* Header */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--line);
+  }
+  .title{
+    display:flex;align-items:baseline;gap:12px;
+    font-family:"IM Fell English SC", serif;
+    letter-spacing:.4px;
+  }
+  .title b{
+    font-size:28px;
+    background:linear-gradient(45deg,var(--gold1),var(--gold2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .title .sub{font:600 13px/1 Inter, system-ui, sans-serif; color:var(--muted)}
+  .controls{display:flex;align-items:center;gap:10px;font:600 13px/1 Inter, system-ui, sans-serif;}
+  .btn{
+    padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#0e1116;color:var(--text);
+    cursor:pointer;user-select:none;transition:transform .04s ease, background .2s;
+  }
+  .btn:hover{background:#131722}
+  .btn:active{transform:translateY(1px)}
+  .toggle{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--line);border-radius:10px}
+  .stamp{color:var(--muted)}
+
+  /* Board layout: two columns (WC left, TW right) */
+  .board{
+    display:grid;grid-template-columns: 1fr 1fr;gap:24px;padding:22px;
+    max-width: min(1800px, 96vw);margin: 0 auto;
+  }
+  .column{display:flex;flex-direction:column;gap:var(--sectionGap)}
+  .colHead{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:8px 4px 0 4px;border-bottom:1px dashed var(--line);margin-bottom:6px;
+  }
+  .colHead h2{
+    margin:0;font-family:"IM Fell English SC",serif;font-size:26px;letter-spacing:.4px
+  }
+  .colHead small{font:600 12px/1 Inter, system-ui, sans-serif;color:var(--muted)}
+
+  /* Section */
+  .section{display:flex;flex-direction:column;gap:12px}
+  .sectHead{
+    display:flex;align-items:center;justify-content:space-between;color:var(--muted);
+    font:700 12px/1 Inter, system-ui, sans-serif;text-transform:uppercase;letter-spacing:.8px;
+    padding:0 2px;
+  }
+  .sectHead .revealAll{cursor:pointer;padding:6px 10px;border:1px solid var(--line);border-radius:8px}
+  .grid{
+    display:grid;gap:var(--gap);
+    grid-template-columns: repeat(auto-fit, minmax(var(--cardW), 1fr));
+  }
+
+  /* Card */
+  .card{
+    width:var(--cardW); height:var(--cardH); perspective:1000px; margin:auto; position:relative;
+  }
+  .cardInner{
+    position:absolute; inset:0; transform-style:preserve-3d; transition: transform var(--flipMs) ease;
+  }
+  .card.revealed .cardInner{ transform:rotateY(180deg) }
+  .face{
+    position:absolute; inset:0; backface-visibility:hidden; border-radius:16px; background:var(--cardBack);
+  }
+  .front{ transform:rotateY(180deg); background:rgba(18,22,29,0.86) }
+  /* Gold trim using mask so interior stays dark */
+  .face::before{
+    content:""; position:absolute; inset:0; padding:var(--trim); border-radius:18px;
+    background:linear-gradient(135deg,var(--gold1),var(--gold2));
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;
+  }
+
+  /* Back content (L7 logo centered) */
+  .backWrap{height:100%;display:grid;place-items:center}
+  .logoBack{
+    width:96px;height:96px;opacity:.9;filter:drop-shadow(0 2px 8px rgba(0,0,0,.5));
+    object-fit:contain;
+  }
+  .logoFallback{font:800 42px/1 Inter, system-ui, sans-serif;letter-spacing:1px;color:#d7d7db}
+
+  /* Front content */
+  .frontWrap{
+    height:100%; padding:14px; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; text-align:center;
+  }
+  .rank{
+    font: 800 34px/1 Inter, system-ui, sans-serif;
+    background:linear-gradient(45deg,var(--gold1),var(--gold2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow: 0 0 0 rgba(0,0,0,0); letter-spacing:.5px;
+  }
+  .teamLogo{width:72px;height:72px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(0,0,0,.45))}
+  .teamName{font-family:"IM Fell English SC",serif;font-size:22px;letter-spacing:.3px}
+
+  /* Status accent (color only, no text) */
+  .accent{
+    position:absolute; top:10px; right:10px; width:12px; height:12px; border-radius:50%;
+    box-shadow: 0 0 0 2px rgba(0,0,0,.35);
+  }
+  .accent.champ{ background: var(--champ) }
+  .accent.promo{ background: var(--promo) }
+  .accent.releg{ background: var(--releg) }
+
+  /* Utility states */
+  .card[aria-disabled="true"]{pointer-events:none;opacity:.92}
+  .hidden{display:none}
+
+  @media (max-width: 1400px){
+    :root{ --cardW: 180px; --cardH: 260px }
+  }
+  @media (max-width: 1200px){
+    :root{ --cardW: 168px; --cardH: 240px }
+  }
+</style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="title">
+      <b>League 7 — Deck Board</b>
+      <span class="sub">World Cup & Triwizard • Click cards to reveal</span>
+    </div>
+    <div class="controls">
+      <span class="stamp" id="stamp">As of —</span>
+      <div class="toggle" id="lockToggle" title="Lock prevents flipping cards back">
+        <input type="checkbox" id="lockChk" checked />
+        <label for="lockChk">Lock</label>
+      </div>
+      <button class="btn" id="btnRefresh">Refresh</button>
+      <button class="btn" id="btnReset">Reset</button>
+    </div>
+  </div>
+
+  <!-- Board -->
+  <div class="board">
+    <!-- World Cup Column -->
+    <div class="column" id="colWC">
+      <div class="colHead">
+        <h2>World Cup</h2>
+        <small>7 teams • Top-4 Championship • Bottom-2 Relegation</small>
+      </div>
+
+      <section class="section" data-section="wc-champ">
+        <div class="sectHead">
+          <span>Championship Qualifiers (Top-4)</span>
+          <span class="revealAll" data-reveal="wc-champ">Reveal All</span>
+        </div>
+        <div class="grid" id="grid-wc-champ"></div>
+      </section>
+
+      <section class="section" data-section="wc-middle">
+        <div class="sectHead">
+          <span>Middle</span>
+          <span class="revealAll" data-reveal="wc-middle">Reveal All</span>
+        </div>
+        <div class="grid" id="grid-wc-middle"></div>
+      </section>
+
+      <section class="section" data-section="wc-releg">
+        <div class="sectHead">
+          <span>Relegation Risk (Bottom-2)</span>
+          <span class="revealAll" data-reveal="wc-releg">Reveal All</span>
+        </div>
+        <div class="grid" id="grid-wc-releg"></div>
+      </section>
+    </div>
+
+    <!-- Triwizard Column -->
+    <div class="column" id="colTW">
+      <div class="colHead">
+        <h2>Triwizard</h2>
+        <small>6 teams • Top-2 Promotion</small>
+      </div>
+
+      <section class="section" data-section="tw-promo">
+        <div class="sectHead">
+          <span>Promotion Candidates (Top-2)</span>
+          <span class="revealAll" data-reveal="tw-promo">Reveal All</span>
+        </div>
+        <div class="grid" id="grid-tw-promo"></div>
+      </section>
+
+      <section class="section" data-section="tw-contend">
+        <div class="sectHead">
+          <span>Contenders</span>
+          <span class="revealAll" data-reveal="tw-contend">Reveal All</span>
+        </div>
+        <div class="grid" id="grid-tw-contend"></div>
+      </section>
+    </div>
+  </div>
+
+<script>
+/* ---------------------------------------------------------
+   QUICK CONFIG (v1: manual order; no stats)
+   Put team names in current rank order for each division.
+   The code will slice them into sections automatically.
+   --------------------------------------------------------- */
+const WORLD_CUP_TEAMS = [
+  /* Ranks 1..7 (Top-4, Middle, Bottom-2) */
+  "WC Team 1","WC Team 2","WC Team 3","WC Team 4","WC Team 5","WC Team 6","WC Team 7"
+];
+
+const TRIWIZ_TEAMS = [
+  /* Ranks 1..6 (Top-2 promo, next 4 contenders) */
+  "TW Team 1","TW Team 2","TW Team 3","TW Team 4","TW Team 5","TW Team 6"
+];
+
+/* Optional: custom logo map: "Team Name" -> image path.
+   If omitted, we try ./images/teams/{slug}.png then {tag}.png, else hide. */
+const TEAM_LOGOS = {
+  // "Nocturn Ravens": "./images/teams/RVN.png",
+  // "Oakshaft Owls": "./images/teams/OWL.png",
+};
+
+/* Optional: display a small rank number on front */
+const SHOW_RANK = true;
+
+/* --------------------------------------------------------- */
+
+const qs = sel => document.querySelector(sel);
+const $stamp = qs('#stamp');
+const $btnRefresh = qs('#btnRefresh');
+const $btnReset   = qs('#btnReset');
+const $lockChk    = qs('#lockChk');
+
+function nowET(){
+  // Format time in America/New_York
+  try{
+    const d = new Date();
+    return d.toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit'
+    });
+  }catch(e){
+    // Fallback: local time
+    const d = new Date();
+    return d.toLocaleString('en-US', {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) + ' (local)';
+  }
+}
+function slugify(name){
+  return (name||'').toLowerCase()
+    .replace(/[^a-z0-9]+/g,'-')
+    .replace(/(^-|-$)/g,'');
+}
+function imgForTeam(name){
+  if (TEAM_LOGOS[name]) return TEAM_LOGOS[name];
+  const slug = slugify(name);
+  // Try slug then try last word (tag-like)
+  return `./images/teams/${slug}.png`;
+}
+
+function setStamp(){
+  $stamp.textContent = `As of ${nowET()} ET`;
+}
+
+function makeCard({rank, name, accent}){
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.setAttribute('data-team', name);
+  el.setAttribute('data-rank', rank);
+
+  el.innerHTML = `
+    <div class="cardInner">
+      <!-- Back -->
+      <div class="face back">
+        <div class="backWrap">
+          <img class="logoBack" src="./images/L7_logo.png" alt="L7" onerror="this.replaceWith((() => {const s=document.createElement('div');s.className='logoFallback';s.textContent='L7';return s;})())">
+        </div>
+      </div>
+
+      <!-- Front -->
+      <div class="face front">
+        <div class="frontWrap">
+          ${SHOW_RANK ? `<div class="rank">#${rank}</div>` : ``}
+          <img class="teamLogo" alt="" onerror="this.classList.add('hidden')" src="${imgForTeam(name)}">
+          <div class="teamName">${name}</div>
+        </div>
+        <span class="accent ${accent||''}" aria-hidden="true"></span>
+      </div>
+    </div>
+  `;
+
+  el.addEventListener('click', () => {
+    const revealed = el.classList.contains('revealed');
+    if (revealed && $lockChk.checked) return; // locked: don't flip back
+    el.classList.toggle('revealed');
+  });
+
+  return el;
+}
+
+function renderBoard(){
+  // Clear
+  ['grid-wc-champ','grid-wc-middle','grid-wc-releg','grid-tw-promo','grid-tw-contend']
+    .forEach(id => { const n = qs('#'+id); if (n) n.innerHTML=''; });
+
+  // World Cup sections
+  const wcTop4   = WORLD_CUP_TEAMS.slice(0,4);
+  const wcMiddle = WORLD_CUP_TEAMS.slice(4,5);
+  const wcBot2   = WORLD_CUP_TEAMS.slice(5,7);
+
+  // Triwizard sections
+  const twTop2   = TRIWIZ_TEAMS.slice(0,2);
+  const twNext4  = TRIWIZ_TEAMS.slice(2,6);
+
+  // Mount WC
+  const gridWC1 = qs('#grid-wc-champ');
+  wcTop4.forEach((name, i) => gridWC1.appendChild(makeCard({rank: i+1, name, accent:'champ'})));
+
+  const gridWC2 = qs('#grid-wc-middle');
+  wcMiddle.forEach((name, i) => gridWC2.appendChild(makeCard({rank: 4+i+1, name})));
+
+  const gridWC3 = qs('#grid-wc-releg');
+  wcBot2.forEach((name, i) => gridWC3.appendChild(makeCard({rank: 5+i+1, name, accent:'releg'})));
+
+  // Mount TW
+  const gridTW1 = qs('#grid-tw-promo');
+  twTop2.forEach((name, i) => gridTW1.appendChild(makeCard({rank: i+1, name, accent:'promo'})));
+
+  const gridTW2 = qs('#grid-tw-contend');
+  twNext4.forEach((name, i) => gridTW2.appendChild(makeCard({rank: 2+i+1, name})));
+
+  // Reveal-all handlers for section headers
+  document.querySelectorAll('.revealAll').forEach(btn=>{
+    btn.onclick = () => {
+      const key = btn.getAttribute('data-reveal'); // e.g., 'wc-champ'
+      const sect = document.querySelector(`[data-section="${key}"]`);
+      sect?.querySelectorAll('.card').forEach(c => c.classList.add('revealed'));
+    };
+  });
+}
+
+function resetBoard(){
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('revealed'));
+}
+
+function refreshBoard(){
+  // For v1 (manual), refresh just re-stamps and resets board state.
+  setStamp();
+  resetBoard();
+}
+
+/* Init */
+renderBoard();
+setStamp();
+
+/* Controls */
+$btnReset.addEventListener('click', resetBoard);
+$btnRefresh.addEventListener('click', refreshBoard);
+
+</script>
+</body>
+</html>
