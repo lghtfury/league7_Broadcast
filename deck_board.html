@@ -13,7 +13,7 @@
     --cardBack:#0b0c10;
     --gold1:#ffd700; --gold2:#a67c00;
     --text:#e8ecf6;
-    --cardW: 220px; --cardH: 300px;  /* tweak if needed */
+    --cardW: 220px; --cardH: 300px;
     --trim: 2px; --radius:18px;
     --gap: 28px;
     --flipMs: 360ms;
@@ -21,7 +21,6 @@
   html,body{margin:0;height:100%;background:var(--bg);color:var(--text);}
   *{box-sizing:border-box}
 
-  /* Title */
   .title{
     padding:18px 24px 8px;
     font-family:"IM Fell English SC",serif;
@@ -31,27 +30,18 @@
     text-align:center;
   }
 
-  /* Board rows */
   .board{max-width:1800px;margin:0 auto;padding:10px 24px 24px;display:flex;flex-direction:column;gap:32px}
   .row{display:flex;gap:var(--gap);align-items:center}
-
-  /* Row 1: 5 cards (WC 1–4, then WC 5) */
   .row1{justify-content:flex-start;flex-wrap:wrap}
-
-  /* Row 2: WC 6–7 on far left, TW 1–2 on far right with big middle gap */
   .row2{justify-content:space-between}
   .leftPack,.rightPack{display:flex;gap:var(--gap);align-items:center}
-
-  /* Row 3: TW 3–6 centered */
   .row3{justify-content:center;flex-wrap:wrap}
 
-  /* Card */
   .card{width:var(--cardW);height:var(--cardH);perspective:1000px;position:relative}
   .inner{position:absolute;inset:0;transform-style:preserve-3d;transition:transform var(--flipMs) ease}
   .card.revealed .inner{transform:rotateY(180deg)}
   .face{position:absolute;inset:0;border-radius:var(--radius);backface-visibility:hidden;background:var(--cardBack)}
   .front{transform:rotateY(180deg);background:rgba(18,22,29,.9)}
-  /* Gold trim via mask so interior stays dark */
   .face::before{
     content:"";position:absolute;inset:0;padding:var(--trim);border-radius:calc(var(--radius) + 2px);
     background:linear-gradient(135deg,var(--gold1),var(--gold2));
@@ -59,7 +49,6 @@
     -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;
   }
 
-  /* Back with L7 logo */
   .backWrap{height:100%;display:grid;place-items:center}
   .logoBack{
     width:min(40%,140px);height:auto;opacity:.95;
@@ -68,7 +57,6 @@
   }
   .logoFallback{font:800 46px/1 Inter,system-ui,sans-serif;letter-spacing:1px;color:#d7d7db}
 
-  /* Front content (rank + logo + name) */
   .frontWrap{
     height:100%;padding:16px;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;text-align:center
   }
@@ -93,44 +81,41 @@
   <div class="title">Season 03 O.W.L.s Standings</div>
 
   <div class="board">
-    <!-- Row 1: WC #1–#4, then WC #5 -->
     <div class="row row1" id="row1"></div>
-
-    <!-- Row 2: left(WC #6–#7) — big gap — right(TW #1–#2) -->
     <div class="row row2">
       <div class="leftPack" id="row2-left"></div>
       <div class="rightPack" id="row2-right"></div>
     </div>
-
-    <!-- Row 3: TW #3–#6 centered -->
     <div class="row row3" id="row3"></div>
   </div>
 
 <script>
-/* ------------ FILLER DATA (replace later) -------------- */
-/* Put teams in current rank order for each division. */
-const WC = ["WC Team 1","WC Team 2","WC Team 3","WC Team 4","WC Team 5","WC Team 6","WC Team 7"];
-const TW = ["TW Team 1","TW Team 2","TW Team 3","TW Team 4","TW Team 5","TW Team 6"];
+/** ====== CONFIG: Published sheet endpoints (from your links) ====== **/
+const PUB_KEY = "2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF";
+// Team Information (teams + divisions)
+const GID_TEAM_INFO = "495267531";
+// OWL Match Results (match rows with Series A/B; games 1..5 optional)
+const GID_MATCHES   = "834810832";
 
-/* Map team -> logo path (optional). If absent, we try a slug in /images/teams/. */
+// Build published CSV URLs (no auth needed)
+const CSV_TEAMS   = `https://docs.google.com/spreadsheets/d/e/${PUB_KEY}/pub?gid=${GID_TEAM_INFO}&single=true&output=csv`;
+const CSV_MATCHES = `https://docs.google.com/spreadsheets/d/e/${PUB_KEY}/pub?gid=${GID_MATCHES}&single=true&output=csv`;
+
+/** ====== UI HOOKS ====== **/
+const L7_BACK = "images/assests/L7_logo_full.png";   // keep your folder spelling
+const FALLBACK_SMALL = "images/assets/L7_logo_small.png";
 const TEAM_LOGOS = {
   // "Nocturn Ravens": "images/teams/rvn.png",
 };
-/* ------------------------------------------------------- */
 
-const L7_BACK = "images/assests/L7_logo_full.png";   // your repo path
-const FALLBACK_SMALL = "images/assets/L7_logo_small.png";
-
-const $r1 = document.getElementById('row1');
+const $r1  = document.getElementById('row1');
 const $r2L = document.getElementById('row2-left');
 const $r2R = document.getElementById('row2-right');
-const $r3 = document.getElementById('row3');
+const $r3  = document.getElementById('row3');
 
+/** ====== Helpers ====== **/
 function slugify(s){return (s||"").toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')}
-function logoFor(name){
-  if (TEAM_LOGOS[name]) return TEAM_LOGOS[name];
-  return `images/teams/${slugify(name)}.png`;
-}
+function logoFor(name){ return TEAM_LOGOS[name] || `images/teams/${slugify(name)}.png`; }
 
 function makeCard({ rank, name }){
   const el = document.createElement('div');
@@ -151,24 +136,235 @@ function makeCard({ rank, name }){
         </div>
       </div>
     </div>`;
-  // one-way reveal (flip back disabled)
   el.addEventListener('click', () => { if (!el.classList.contains('revealed')) el.classList.add('revealed'); });
-  // If you prefer toggle instead, replace the handler with:
-  // el.addEventListener('click', () => el.classList.toggle('revealed'));
   return el;
 }
 
-function render(){
+function renderFromLists(WC, TW){
   $r1.innerHTML = ''; $r2L.innerHTML=''; $r2R.innerHTML=''; $r3.innerHTML='';
-  // Row 1: WC 1–4 then WC 5
-  WC.slice(0,5).forEach((name,i) => $r1.appendChild(makeCard({rank:i+1,name})));
+  // Row 1: WC 1–4 then WC 5 (top 4 are always WC because we render WC first)
+  WC.slice(0,5).forEach((t,i) => $r1.appendChild(makeCard({rank:i+1, name:t})));
   // Row 2: left = WC 6–7, right = TW 1–2
-  WC.slice(5,7).forEach((name,i) => $r2L.appendChild(makeCard({rank:5+i+1,name})));
-  TW.slice(0,2).forEach((name,i) => $r2R.appendChild(makeCard({rank:i+1,name})));
+  WC.slice(5,7).forEach((t,i) => $r2L.appendChild(makeCard({rank:5+i+1, name:t})));
+  TW.slice(0,2).forEach((t,i) => $r2R.appendChild(makeCard({rank:i+1, name:t})));
   // Row 3: TW 3–6
-  TW.slice(2,6).forEach((name,i) => $r3.appendChild(makeCard({rank:2+i+1,name})));
+  TW.slice(2,6).forEach((t,i) => $r3.appendChild(makeCard({rank:2+i+1, name:t})));
 }
-render();
+
+/** ====== CSV parsing ====== **/
+function parseCSV(text){
+  const rows = [];
+  let i=0, field="", row=[], inQ=false;
+  while(i<text.length){
+    const c = text[i++];
+    if(inQ){
+      if(c === '"'){
+        if(text[i] === '"'){ field += '"'; i++; }
+        else inQ = false;
+      }else field += c;
+    }else{
+      if(c === '"') inQ = true;
+      else if(c === ','){ row.push(field); field=""; }
+      else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=""; }
+      else if(c === '\r'){ /* ignore */ }
+      else field += c;
+    }
+  }
+  if(field.length || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+function rowsToObjects(rows){
+  const [hdrs, ...body] = rows;
+  const headers = hdrs.map(h => h.trim());
+  return body.filter(r => r.some(v => String(v||"").trim().length)).map(r => {
+    const obj = {};
+    headers.forEach((h,idx)=> obj[h]= (r[idx] ?? "").toString().trim());
+    return obj;
+  });
+}
+
+/** ====== Column detection (matches your screenshot) ====== */
+function detectColumns(headers){
+  const norm = headers.map(h => (h || "").toString().trim());
+
+  const idx = {};
+  // Division (e.g., column C)
+  idx.div = norm.findIndex(h => /^division$/i.test(h));
+
+  // GAME columns (H..Q): accept "GAME 1 - A", "G1 A", "Game1A", etc.
+  const gameColA = [], gameColB = [];
+  norm.forEach((h,i)=>{
+    if(/^(g|game)\s*\d+\s*(?:-|)\s*a$/i.test(h)) gameColA.push(i);
+    if(/^(g|game)\s*\d+\s*(?:-|)\s*b$/i.test(h)) gameColB.push(i);
+  });
+  const firstGameIdx = Math.min(
+    gameColA.length ? gameColA[0] : Infinity,
+    gameColB.length ? gameColB[0] : Infinity
+  );
+
+  // TEAMS → A/B (E/F). Prefer "Team A/B" labels; otherwise plain "A/B" before first GAME col.
+  let teamA = norm.findIndex(h => /^team\s*a$/i.test(h));
+  let teamB = norm.findIndex(h => /^team\s*b$/i.test(h));
+  if(teamA < 0 || teamB < 0){
+    const loneA = norm.findIndex((h,i)=> /^a$/i.test(h) && i < firstGameIdx);
+    const loneB = norm.findIndex((h,i)=> /^b$/i.test(h) && i < firstGameIdx);
+    if(teamA < 0) teamA = loneA;
+    if(teamB < 0) teamB = loneB;
+  }
+  idx.teamA = teamA;
+  idx.teamB = teamB;
+
+  // SERIES → A/B (S/T). Accept "Series - A/B" or last A/B after the game columns.
+  let serA = norm.findIndex(h => /^series\s*(?:-|)\s*a$/i.test(h));
+  let serB = norm.findIndex(h => /^series\s*(?:-|)\s*b$/i.test(h));
+  if(serA < 0 || serB < 0){
+    const lastGameIdx = Math.max(
+      gameColA.length ? gameColA[gameColA.length-1] : -1,
+      gameColB.length ? gameColB[gameColB.length-1] : -1
+    );
+    for(let i = norm.length - 1; i > lastGameIdx; i--){
+      if(serB < 0 && /^b$/i.test(norm[i])) serB = i;
+      else if(serA < 0 && /^a$/i.test(norm[i])) serA = i;
+      if(serA >= 0 && serB >= 0) break;
+    }
+  }
+  idx.serA = serA; idx.serB = serB;
+
+  idx.gamesA = gameColA; idx.gamesB = gameColB;
+  return idx;
+}
+
+/** ====== Standings helpers ====== */
+function normalizeDivision(s){
+  const t = (s || "").toString().trim().toLowerCase().replace(/\s+/g,'');
+  if (t === 'worldcup' || t === 'wc') return 'World Cup';
+  if (t === 'triwizardcup' || t === 'triwizard' || t === 'tw') return 'Triwizard';
+  return s || '';
+}
+
+function buildTeamDirectory(teamRows){
+  const headers = Object.keys(teamRows[0] || {});
+  const iTeam = headers.find(h => /^team(\s*name)?$/i.test(h)) ?? headers[0];
+  const iDiv  = headers.find(h => /division/i.test(h)) ?? headers[1];
+
+  const dir = {};
+  for(const r of teamRows){
+    const name = (r[iTeam] || "").trim();
+    const div  = normalizeDivision(r[iDiv]);
+    if(name && div) dir[name] = div;
+  }
+  return dir;
+}
+
+function computeStandings(teamDirectory, matchesObjs){
+  const makeLine = (name, div) => ({
+    team:name, division:div,
+    matchW:0, matchL:0,
+    gameW:0, gameL:0,
+    ptsFor:0, ptsAg:0
+  });
+
+  // seed teams
+  const table = {};
+  Object.entries(teamDirectory).forEach(([name,div])=>{
+    table[name] = makeLine(name, div);
+  });
+
+  // detect columns
+  const headers = Object.keys(matchesObjs[0] || {});
+  const idx = detectColumns(headers);
+
+  const val = (row, i) => {
+    const v = i>=0 ? row[headers[i]] : "";
+    const n = Number(v);
+    return Number.isFinite(n) ? n : (typeof v==="string" && v.trim()!=="" ? Number(v.replace(/[^\d.-]/g,'')) : NaN);
+  };
+
+  // accumulate from matches
+  for(const row of matchesObjs){
+    const divRaw = idx.div>=0 ? row[headers[idx.div]] : "";
+    const div    = normalizeDivision(divRaw);
+    const Aname  = idx.teamA>=0 ? row[headers[idx.teamA]].trim() : "";
+    const Bname  = idx.teamB>=0 ? row[headers[idx.teamB]].trim() : "";
+    if(!div || !Aname || !Bname) continue;
+    if(!table[Aname] || !table[Bname]) continue;
+
+    // Series totals
+    const sA = val(row, idx.serA);
+    const sB = val(row, idx.serB);
+    const hasSeries = Number.isFinite(sA) && Number.isFinite(sB);
+    if(hasSeries){
+      table[Aname].gameW += sA; table[Aname].gameL += sB;
+      table[Bname].gameW += sB; table[Bname].gameL += sA;
+      if(sA > sB){ table[Aname].matchW++; table[Bname].matchL++; }
+      else if(sB > sA){ table[Bname].matchW++; table[Aname].matchL++; }
+    }
+
+    // Optional per-game points
+    if(idx.gamesA.length && idx.gamesA.length === idx.gamesB.length){
+      for(let g=0; g<idx.gamesA.length; g++){
+        const a = val(row, idx.gamesA[g]);
+        const b = val(row, idx.gamesB[g]);
+        if(Number.isFinite(a)) table[Aname].ptsFor += a;
+        if(Number.isFinite(b)) table[Bname].ptsFor += b;
+        if(Number.isFinite(a)) table[Bname].ptsAg  += a;
+        if(Number.isFinite(b)) table[Aname].ptsAg  += b;
+      }
+    }
+  }
+
+  // split + sort
+  const byDiv = { "World Cup": [], "Triwizard": [] };
+  Object.values(table).forEach(t => {
+    const key = normalizeDivision(t.division);
+    if(byDiv[key]) byDiv[key].push({...t, division:key});
+  });
+
+  // tie-breakers: MatchW → GameWin% → PointDiff → PointsFor → Team name
+  const ranker = (a,b) => {
+    const awp = a.gameW + a.gameL ? a.gameW/(a.gameW+a.gameL) : 0;
+    const bwp = b.gameW + b.gameL ? b.gameW/(b.gameW+b.gameL) : 0;
+    const ad  = a.ptsFor - a.ptsAg;
+    const bd  = b.ptsFor - b.ptsAg;
+    return (b.matchW - a.matchW)
+        || (bwp - awp)
+        || (bd - ad)
+        || (b.ptsFor - a.ptsFor)
+        || a.team.localeCompare(b.team);
+  };
+
+  const WC = (byDiv["World Cup"]||[]).sort(ranker).map(t => t.team);
+  const TW = (byDiv["Triwizard"]||[]).sort(ranker).map(t => t.team);
+  return { WC, TW };
+}
+
+/** ====== Fetch + Render ====== **/
+async function fetchCSV(url){
+  const res = await fetch(url, {cache:"no-store"});
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
+}
+
+(async () => {
+  try {
+    const [teamsCSV, matchesCSV] = await Promise.all([
+      fetchCSV(CSV_TEAMS), fetchCSV(CSV_MATCHES)
+    ]);
+    const teamsObjs   = rowsToObjects(parseCSV(teamsCSV));
+    const matchesObjs = rowsToObjects(parseCSV(matchesCSV));
+
+    const teamDirectory = buildTeamDirectory(teamsObjs);
+    const { WC, TW } = computeStandings(teamDirectory, matchesObjs);
+
+    // Render into your board layout
+    renderFromLists(WC, TW);
+  } catch (err) {
+    console.error("Standings fetch/compute failed; using placeholders.", err);
+    const WC_FALLBACK = ["WC Team 1","WC Team 2","WC Team 3","WC Team 4","WC Team 5","WC Team 6","WC Team 7"];
+    const TW_FALLBACK = ["TW Team 1","TW Team 2","TW Team 3","TW Team 4","TW Team 5","TW Team 6"];
+    renderFromLists(WC_FALLBACK, TW_FALLBACK);
+  }
+})();
 </script>
 </body>
 </html>
