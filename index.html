@@ -1,134 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>League 7 Broadcast Hub</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <!-- IM Fell English SC font -->
-  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
-
+  <meta charset="utf-8" />
+  <title>League 7 — Overlay Index</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
-    body {
-      margin: 0;
-      font-family: 'IM Fell English SC', serif;
-      background: #0a0b0e;
-      color: #e8ecf6;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      min-height: 100vh;
-      text-align: center;
-      padding: 2em;
-    }
-
-    h1 {
-      font-size: 3em;
-      margin-bottom: 1em;
-      background: linear-gradient(45deg, #ffd700, #a67c00);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    h2 {
-      font-size: 2em;
-      margin: 1.5em 0 0.75em;
-      color: #ffd700;
-      text-decoration: underline;
-    }
-
-    .warning {
-      margin: 0.5em auto 1.25em;
-      padding: 0.5em 1em;
-      font-size: 1em;
-      font-style: italic;
-      color: #0a0b0e;
-      background: linear-gradient(90deg, #ffd700, #a67c00);
-      border-radius: 8px;
-      display: inline-block;
-    }
-
-    /* NEW: 3-column responsive layout */
-    .sections {
-      width: 100%;
-      max-width: 1200px;
-      display: grid;
-      grid-template-columns: repeat(3, minmax(260px, 1fr));
-      gap: 1.5em;
-      align-items: start;
-    }
-    @media (max-width: 1024px) {
-      .sections { grid-template-columns: repeat(2, minmax(260px, 1fr)); }
-    }
-    @media (max-width: 640px) {
-      .sections { grid-template-columns: 1fr; }
-    }
-
-    .overlay-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      width: 100%;
-    }
-
-    .overlay-list li {
-      margin: 1em 0;
-    }
-
-    .overlay-list a {
-      display: block;
-      text-decoration: none;
-      font-size: 1.3em;
-      color: #e8ecf6;
-      padding: 0.75em 1em;
-      border: 2px solid transparent;
-      border-radius: 12px;
-      background: linear-gradient(#0a0b0e, #0a0b0e) padding-box,
-                  linear-gradient(90deg, #ffd700, #a67c00) border-box;
-      transition: all 0.25s ease;
-      word-break: break-word;
-    }
-
-    .overlay-list a:hover {
-      background: linear-gradient(90deg, #ffd700, #a67c00);
-      color: #0a0b0e;
-    }
+    :root{ --bg:#0a0b0e; --card:#0e1116; --line:#1b2438; --text:#e8ecf6; --muted:#97a0b3; --accent:#ffd166; }
+    *{ box-sizing:border-box }
+    html,body{ margin:0; height:100%; background:var(--bg); color:var(--text); font-family:Inter,system-ui; }
+    .wrap{ max-width:960px; margin:0 auto; padding:32px 20px; }
+    h1{ margin:0 0 16px; font-weight:800; letter-spacing:.3px }
+    p{ margin:0 0 24px; color:var(--muted) }
+    .grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px }
+    .card{ border:1px solid var(--line); background:var(--card); padding:16px; border-radius:16px }
+    a.button{ display:inline-block; margin-top:8px; padding:10px 14px; border-radius:10px; border:1px solid var(--line); text-decoration:none; color:var(--text) }
+    a.button:hover{ border-color:var(--accent) }
+    .note{ margin-top:24px; font-size:12px; color:var(--muted) }
   </style>
 </head>
 <body>
-  <h1>League 7 Broadcast Hub</h1>
+  <div class="wrap">
+    <h1>League 7 — Overlay Hub</h1>
+    <p>Quick links for producer panel and overlay pages.</p>
 
-  <div class="sections">
-    <!-- Producer Overlays -->
-    <section>
-      <h2>Producer Overlays</h2>
-      <div class="warning">Producer Use Only</div>
-      <ul class="overlay-list">
-        <li><a href="https://lghtfury.github.io/league7_Broadcast/starting_soon" target="_blank" rel="noopener noreferrer">Starting Soon Screen</a></li>
-        <li><a href="https://vdo.ninja/?scene=0&amp;room=League_7_Players&amp;password=season3&amp;sl" target="_blank" rel="noopener noreferrer">Game Play Visuals</a></li>
-        <li><a href="gameplay_overlay.html" target="_blank" rel="noopener noreferrer">Gameplay Overlay</a></li>
-      </ul>
-    </section>
+    <div class="grid">
+      <div class="card">
+        <h3>Control Panel</h3>
+        <p>Update scenes, ticker, teams, scores.</p>
+        <!-- UPDATED LINK -->
+        <a class="button" href="https://lghtfury.github.io/league7_Broadcast/panel.html?v=20250906-1" target="_blank" rel="noopener">Open Control Panel</a>
+      </div>
 
-    <!-- Producer Tools -->
-    <section>
-      <h2>Producer Tools</h2>
-      <div class="warning">Producer Use Only</div>
-      <ul class="overlay-list">
-        <li><a href="https://lghtfury.github.io/league7_Broadcast/panel.html?overlay=startingsoon" target="_blank" rel="noopener noreferrer">Control Panel</a></li>
-      </ul>
-    </section>
+      <div class="card">
+        <h3>Starting Soon</h3>
+        <a class="button" href="starting_soon.html?v=20250906-1" target="_blank" rel="noopener">Open</a>
+      </div>
 
-    <!-- Commentators Screens -->
-    <section>
-      <h2>Commentators Screens</h2>
-      <ul class="overlay-list">
-        <li><a href="https://vdo.ninja/?scene=0&amp;room=League_7_Players&amp;password=season3&amp;sl" target="_blank" rel="noopener noreferrer">Game Play Visuals</a></li>
-        <li><a href="roster.html" target="_blank" rel="noopener noreferrer">Roster Comparison Chart</a></li>
-        <li><a href="teamvsteam.html" target="_blank" rel="noopener noreferrer">Team vs Team Series Screen</a></li>
-      </ul>
-    </section>
+      <div class="card">
+        <h3>Team vs Team</h3>
+        <a class="button" href="Overlay.html?v=20250906-1" target="_blank" rel="noopener">Open</a>
+      </div>
+
+      <div class="card">
+        <h3>Roster / Logos Wall</h3>
+        <a class="button" href="logos_rosters.html?v=20250906-1" target="_blank" rel="noopener">Open</a>
+      </div>
+
+      <div class="card">
+        <h3>Standings Board</h3>
+        <a class="button" href="deck_board.html?v=20250906-1" target="_blank" rel="noopener">Open</a>
+      </div>
+    </div>
+
+    <div class="note">Tip: The <code>?v=20250906-1</code> cache-buster helps OBS pull the newest version.</div>
   </div>
 </body>
 </html>
