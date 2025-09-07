@@ -21,6 +21,9 @@
     .btn{padding:6px 12px; border:0; border-radius:6px; background:var(--interactive-normal); color:var(--text-normal); font-size:14px; cursor:pointer;}
     .badge{display:inline-block; width:1rem; height:1rem; border-radius:50%;}
     .notice{position:fixed; inset:auto 12px 12px auto; background:#222; color:#fff; padding:6px 10px; border-radius:6px; font:12px/1.3 system-ui;}
+    .swatch{width:22px;height:22px;border-radius:4px;border:1px solid #0004; cursor:pointer;}
+    .swatch-wrap{display:flex; gap:8px; align-items:center}
+    .color-input{width:36px;height:24px;border:0;background:transparent; cursor:pointer;}
   </style>
 </head>
 <body>
@@ -124,6 +127,7 @@
       const [isDrawingMode, setIsDrawingMode] = React.useState(false);
       const [isDrawing, setIsDrawing] = React.useState(false);
       const [drawings, setDrawings] = React.useState([]); // [{ path:[{x,y}], color }]
+      const [currentColor, setCurrentColor] = React.useState("#ffbd00"); // NEW: selected color
       const canvasRef = React.useRef(null);
       const currentPathRef = React.useRef([]);
 
@@ -189,8 +193,8 @@
         });
         const p2 = currentPathRef.current;
         if (p2.length > 1) {
-          ctx.beginPath(); ctx.strokeStyle = "#ffbd00"; ctx.lineWidth = 3;
-          ctx.lineCap = "round"; ctx.lineJoin = "round";
+          ctx.beginPath(); ctx.strokeStyle = currentColor;  /* use selected color while drawing */
+          ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.lineJoin = "round";
           ctx.moveTo(p2[0].x, p2[0].y);
           for (let i=1;i<p2.length;i++) ctx.lineTo(p2[i].x, p2[i].y);
           ctx.stroke();
@@ -198,7 +202,7 @@
       };
       const stopDrawing = () => {
         if (isDrawing && isDrawingMode) {
-          const newStroke = { path: currentPathRef.current.slice(), color: "#ffbd00" };
+          const newStroke = { path: currentPathRef.current.slice(), color: currentColor }; /* save color */
           const next = [...drawings, newStroke];
           setDrawings(next);
           publishDrawings(next);
@@ -286,6 +290,8 @@
           setRadiusVisibility(next);
           publishRanges(next);
         };
+        // quick color swatches
+        const swatches = ["#ffbd00","#e74c3c","#2ecc71","#3498db","#ffffff","#9b59b6","#f1c40f","#e67e22"];
         return React.createElement("div", { className:"controls" },
           React.createElement("div", { className:"controls-row" },
             React.createElement("label", { className:"toggle" },
@@ -297,6 +303,26 @@
               "Enable/Disable drawing mode"
             ),
             React.createElement("button", { className:"btn", onClick: clearCanvas }, "🧹 Clear current drawing")
+          ),
+          React.createElement("div", { className:"controls-row", style:{borderBottom:'none', marginBottom:0, paddingBottom:0} },
+            React.createElement("div", { className:"swatch-wrap" },
+              React.createElement("span", null, "Color:"),
+              ...swatches.map(c =>
+                React.createElement("div", {
+                  key:c, className:"swatch",
+                  title:c,
+                  style:{ background:c, outline: c===currentColor ? '2px solid #fff' : '0' },
+                  onClick: ()=> setCurrentColor(c)
+                })
+              ),
+              React.createElement("input", {
+                className:"color-input",
+                type:"color",
+                value: currentColor,
+                onChange: (e)=> setCurrentColor(e.target.value),
+                title:"Custom color"
+              })
+            )
           ),
           // range toggles
           [["keeperPKick","#FF0000","Show power kick range on Keepers (r=35m)"],
@@ -341,11 +367,11 @@
               cursor: isDrawingMode ? "crosshair" : "default"
             }
           }),
-          // pieces (FIX APPLIED HERE)
+          // pieces (drawing fix)
           React.createElement("div", {
             style:{
               position:"absolute", top:0, left:0, width:"100%", height:"100%", zIndex:2,
-              pointerEvents: isDrawingMode ? "none" : "auto"   /* <-- when drawing, let canvas receive events */
+              pointerEvents: isDrawingMode ? "none" : "auto"
             },
             onDragOver:(e)=>{ if (!isDrawingMode) { e.preventDefault(); handleDragOver(e); } }
           },
