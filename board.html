@@ -20,6 +20,7 @@
     .toggle{display:flex; align-items:center; gap:8px; cursor:pointer; color:var(--text-normal);}
     .btn{padding:6px 12px; border:0; border-radius:6px; background:var(--interactive-normal); color:var(--text-normal); font-size:14px; cursor:pointer;}
     .badge{display:inline-block; width:1rem; height:1rem; border-radius:50%;}
+    .notice{position:fixed; inset:auto 12px 12px auto; background:#222; color:#fff; padding:6px 10px; border-radius:6px; font:12px/1.3 system-ui;}
   </style>
 </head>
 <body>
@@ -29,18 +30,19 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
-  <!-- Firebase compat (simple for CDNs) -->
+  <!-- Firebase compat (CDN) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
   <script>
     /*** CONFIG ***/
     const SPRITE_PATH = "images/quidditchboard";
-    const ROOM_ID = "main";                 // single room as requested
+    const ROOM_ID = "main";                 // single room
     const urlRole = new URLSearchParams(location.search).get("role");
     const ROLE = (urlRole === "control") ? "control" : "view";
 
-    // Your Firebase project
+    // Your Firebase project (as provided)
     const firebaseConfig = {
       apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
       authDomain: "league7overlay.firebaseapp.com",
@@ -51,10 +53,26 @@
       measurementId: "G-QW2NG2BNF9"
     };
     firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
     const db = firebase.firestore();
     const docRef = db.collection("quidditchBoard").doc(ROOM_ID);
 
-    /*** BOARD CONSTANTS (from your code) ***/
+    /*** AUTH (anonymous) — keeps your existing rule happy ***/
+    let authed = false;
+    function showNotice(msg) {
+      let n = document.querySelector('.notice');
+      if (!n) { n = document.createElement('div'); n.className='notice'; document.body.appendChild(n); }
+      n.textContent = msg;
+      clearTimeout(n._t);
+      n._t = setTimeout(()=> n.remove(), 3000);
+    }
+    function requireAuth() {
+      return auth.signInAnonymously()
+        .then(() => { authed = true; })
+        .catch(err => { console.error(err); showNotice('Auth error. Check Firebase setup.'); });
+    }
+
+    /*** BOARD CONSTANTS (your code) ***/
     const SCALE = 4;
     const FIELD_WIDTH = 400 * SCALE;
     const FIELD_HEIGHT = 140 * SCALE;
@@ -149,14 +167,14 @@
 
       // drawing handlers
       const startDrawing = (e) => {
-        if (!canEdit || !isDrawingMode) return;
+        if (!isDrawingMode) return; // auth already done globally
         const rect = canvasRef.current.getBoundingClientRect();
         const x = e.clientX - rect.left, y = e.clientY - rect.top;
         setIsDrawing(true);
         currentPathRef.current = [{ x, y }];
       };
       const draw = (e) => {
-        if (!canEdit || !isDrawingMode || !isDrawing) return;
+        if (!isDrawingMode || !isDrawing) return;
         const rect = canvasRef.current.getBoundingClientRect();
         const x = e.clientX - rect.left, y = e.clientY - rect.top;
         currentPathRef.current.push({ x, y });
@@ -182,7 +200,6 @@
         }
       };
       const stopDrawing = () => {
-        if (!canEdit) return;
         if (isDrawing && isDrawingMode) {
           const newStroke = { path: currentPathRef.current.slice(), color: "#ffbd00" };
           const next = [...drawings, newStroke];
@@ -192,7 +209,6 @@
         setIsDrawing(false);
       };
       const clearCanvas = () => {
-        if (!canEdit) return;
         const c = canvasRef.current, ctx = c.getContext("2d");
         ctx.clearRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
         setDrawings([]);
@@ -201,7 +217,6 @@
 
       // drag handlers
       const handleDragStart = (e, player) => {
-        if (!canEdit) return;
         draggedPlayerRef.current = player;
         const ghost = new Image();
         ghost.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
@@ -209,7 +224,7 @@
       };
       const handleDragOver = (e) => {
         e.preventDefault();
-        if (!canEdit || !draggedPlayerRef.current) return;
+        if (!draggedPlayerRef.current) return;
         const rect = e.currentTarget.getBoundingClientRect();
         const x = Math.max(0, Math.min(FIELD_WIDTH, e.clientX - rect.left));
         const y = Math.max(0, Math.min(FIELD_HEIGHT, e.clientY - rect.top));
@@ -221,28 +236,24 @@
         }));
       };
       const handleDragEnd = () => {
-        if (!canEdit) return;
         draggedPlayerRef.current = null;
         publishPlayers();
       };
 
-      // Firestore publish
+      // Firestore publish (client-side: only control shows buttons, but both roles are authed)
       const publishPlayers = debounce(() => {
-        if (!canEdit) return;
         docRef.set({ players: { players, updatedAt: nowTs() } }, { merge: true }).catch(console.error);
       }, 100);
 
       const publishDrawings = debounce((nextDrawings) => {
-        if (!canEdit) return;
         docRef.set({ drawings: { drawings: nextDrawings, updatedAt: nowTs() } }, { merge: true }).catch(console.error);
       }, 100);
 
       const publishRanges = debounce((nextRanges) => {
-        if (!canEdit) return;
         docRef.set({ ranges: { radiusVisibility: nextRanges, updatedAt: nowTs() } }, { merge: true }).catch(console.error);
       }, 100);
 
-      // Firestore subscribe for both roles
+      // Firestore subscribe
       React.useEffect(() => {
         const unsub = docRef.onSnapshot(snap => {
           const data = snap.data() || {};
@@ -253,10 +264,7 @@
             setDrawings(data.drawings.drawings);
           }
           if (data.ranges && data.ranges.radiusVisibility) {
-            setRadiusVisibility(prev => {
-              // merge to avoid undefined flickers
-              return { ...prev, ...data.ranges.radiusVisibility };
-            });
+            setRadiusVisibility(prev => ({ ...prev, ...data.ranges.radiusVisibility }));
           }
         }, console.error);
         return unsub;
@@ -275,7 +283,7 @@
         });
 
       const Controls = () => {
-        if (!canEdit) return null;
+        if (ROLE !== "control") return null; // only show on controller
         const toggle = (id) => {
           const next = { ...radiusVisibility, [id]: !radiusVisibility[id] };
           setRadiusVisibility(next);
@@ -326,20 +334,20 @@
           // canvas
           React.createElement("canvas", {
             ref:canvasRef, width:FIELD_WIDTH, height:FIELD_HEIGHT,
-            onMouseDown: canEdit && isDrawingMode ? startDrawing : null,
-            onMouseMove: canEdit && isDrawingMode ? draw : null,
-            onMouseUp:   canEdit && isDrawingMode ? stopDrawing : null,
-            onMouseLeave:canEdit && isDrawingMode ? stopDrawing : null,
+            onMouseDown: isDrawingMode ? startDrawing : null,
+            onMouseMove: isDrawingMode ? draw : null,
+            onMouseUp:   isDrawingMode ? stopDrawing : null,
+            onMouseLeave:isDrawingMode ? stopDrawing : null,
             style:{
               position:"absolute", top:0, left:0, zIndex:1,
-              pointerEvents: canEdit && isDrawingMode ? "auto" : "none",
-              cursor: canEdit && isDrawingMode ? "crosshair" : "default"
+              pointerEvents: isDrawingMode ? "auto" : "none",
+              cursor: isDrawingMode ? "crosshair" : "default"
             }
           }),
           // pieces
           React.createElement("div", {
             style:{ position:"absolute", top:0, left:0, width:"100%", height:"100%", zIndex:2, pointerEvents:"auto" },
-            onDragOver:(e)=>{ e.preventDefault(); if (canEdit) handleDragOver(e); }
+            onDragOver:(e)=>{ e.preventDefault(); handleDragOver(e); }
           },
             // ranges
             Object.values(players).flat().map(player => {
@@ -354,13 +362,13 @@
             Object.values(players).flat().map(player =>
               React.createElement("div", {
                 key:`icon-${player.id}`,
-                draggable: canEdit && !isDrawingMode,
-                onDragStart:(e)=> canEdit && handleDragStart(e, player),
-                onDragEnd: ()=> canEdit && handleDragEnd(),
+                draggable: !isDrawingMode,
+                onDragStart:(e)=> handleDragStart(e, player),
+                onDragEnd: ()=> handleDragEnd(),
                 style:{
                   position:"absolute", left:`${player.x}px`, top:`${player.y}px`,
                   transform:"translate(-50%, -50%)",
-                  cursor: canEdit && !isDrawingMode ? "move" : "default",
+                  cursor: !isDrawingMode ? "move" : "default",
                   width:"2rem", height:"2rem", zIndex:2
                 }
               },
@@ -388,15 +396,17 @@
 
       return React.createElement(React.Fragment, null,
         React.createElement(PlayField),
-        canEdit ? React.createElement(Controls) : null
+        ROLE === "control" ? React.createElement(Controls) : null
       );
     };
 
-    // mount
-    (function(){
+    /*** BOOTSTRAP: auth first, then mount ***/
+    (async function boot(){
+      await requireAuth();  // satisfies your current Firestore rule
       const el = document.getElementById("board-root");
       if (ReactDOM.createRoot) ReactDOM.createRoot(el).render(React.createElement(QuiddichBoard));
       else ReactDOM.render(React.createElement(QuiddichBoard), el);
+      showNotice(ROLE === 'control' ? 'Control mode (signed in anon)' : 'View mode (signed in anon)');
     })();
   </script>
 </body>
