@@ -1,0 +1,225 @@
+<!--
+  quidditchboard.html
+  ===================
+  This is the standalone Quidditch Board overlay with Firebase sync.
+
+  - Control mode (with buttons):
+      ?role=control
+  - View mode (stream overlay, read-only):
+      ?role=view  or just omit the param
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quidditch Board</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      margin: 0;
+      background: #0a0b0e;
+      color: #e8ecf6;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #board-root {
+      margin-top: 20px;
+    }
+  </style>
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD5mJAchcPP61x--oslD2y-tojorp3ysw8",
+      authDomain: "league7overlay.firebaseapp.com",
+      projectId: "league7overlay",
+      storageBucket: "league7overlay.firebasestorage.app",
+      messagingSenderId: "126648845416",
+      appId: "1:126648845416:web:06be2078b0c95bbb97a7dd",
+      measurementId: "G-QW2NG2BNF9"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Expose Firestore globally for main script
+    window._db = db;
+    window._firestoreFns = { doc, setDoc, getDoc, onSnapshot };
+  </script>
+
+  <!-- React -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+</head>
+<body>
+  <h1>Quidditch Board</h1>
+  <div id="board-root"></div>
+
+  <script type="text/javascript">
+    const { useState, useEffect, useRef } = React;
+    const { doc, setDoc, onSnapshot } = window._firestoreFns;
+    const db = window._db;
+
+    const SCALE = 4;
+    const FIELD_WIDTH = 400 * SCALE;
+    const FIELD_HEIGHT = 140 * SCALE;
+    const KEEPER_PKICK_RADIUS = 35 * SCALE;
+    const SEEKER_BUMP_RADIUS = 5 * SCALE;
+    const CHASER_PASS_RADIUS = 50 * SCALE;
+    const BEATER_INTERCEPT_RADIUS = 50 * SCALE;
+
+    function QuidditchBoard({ role }) {
+      const canvasRef = useRef(null);
+      const [isDrawingMode, setIsDrawingMode] = useState(false);
+      const [isDrawing, setIsDrawing] = useState(false);
+      const [drawings, setDrawings] = useState([]);
+      const currentPathRef = useRef([]);
+
+      // Firebase sync
+      useEffect(() => {
+        const boardRef = doc(db, "boards", "quidditch");
+        if (role === "control") {
+          // Push local drawings to Firestore
+          setDoc(boardRef, { drawings }, { merge: true });
+        }
+      }, [drawings, role]);
+
+      useEffect(() => {
+        const boardRef = doc(db, "boards", "quidditch");
+        return onSnapshot(boardRef, (snap) => {
+          if (snap.exists() && role !== "control") {
+            const data = snap.data();
+            setDrawings(data.drawings || []);
+          }
+        });
+      }, [role]);
+
+      // Drawing handlers
+      const startDrawing = (e) => {
+        if (!isDrawingMode) return;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        setIsDrawing(true);
+        currentPathRef.current = [{ x, y }];
+      };
+
+      const draw = (e) => {
+        if (!isDrawing || !isDrawingMode) return;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        currentPathRef.current.push({ x, y });
+        redraw();
+      };
+
+      const stopDrawing = () => {
+        if (isDrawing && isDrawingMode) {
+          setDrawings((prev) => [...prev, { path: currentPathRef.current, color: "#ffbd00" }]);
+        }
+        setIsDrawing(false);
+      };
+
+      const clearCanvas = () => {
+        setDrawings([]);
+      };
+
+      const redraw = () => {
+        const ctx = canvasRef.current.getContext("2d");
+        ctx.clearRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+        drawings.forEach((drawing) => {
+          const path = drawing.path;
+          if (path.length < 2) return;
+          ctx.beginPath();
+          ctx.strokeStyle = drawing.color;
+          ctx.lineWidth = 3;
+          ctx.moveTo(path[0].x, path[0].y);
+          for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
+          ctx.stroke();
+        });
+        if (currentPathRef.current.length > 1) {
+          ctx.beginPath();
+          ctx.strokeStyle = "#ffbd00";
+          ctx.lineWidth = 3;
+          ctx.moveTo(currentPathRef.current[0].x, currentPathRef.current[0].y);
+          for (let i = 1; i < currentPathRef.current.length; i++) ctx.lineTo(currentPathRef.current[i].x, currentPathRef.current[i].y);
+          ctx.stroke();
+        }
+      };
+
+      useEffect(() => {
+        redraw();
+      }, [drawings]);
+
+      return React.createElement("div", null,
+        React.createElement("div", {
+          style: {
+            width: FIELD_WIDTH,
+            height: FIELD_HEIGHT,
+            position: "relative"
+          }
+        },
+          React.createElement("div", {
+            style: {
+              width: "100%",
+              height: "100%",
+              backgroundImage: 'url("images/tools/qpitch.png")',
+              backgroundSize: "100% 100%",
+              position: "absolute",
+              top: 0, left: 0, zIndex: 0
+            }
+          }),
+          React.createElement("canvas", {
+            ref: canvasRef,
+            width: FIELD_WIDTH,
+            height: FIELD_HEIGHT,
+            onMouseDown: role === "control" && isDrawingMode ? startDrawing : null,
+            onMouseMove: role === "control" && isDrawingMode ? draw : null,
+            onMouseUp: role === "control" && isDrawingMode ? stopDrawing : null,
+            onMouseLeave: role === "control" && isDrawingMode ? stopDrawing : null,
+            style: {
+              position: "absolute",
+              top: 0, left: 0, zIndex: 1,
+              pointerEvents: isDrawingMode && role === "control" ? "auto" : "none",
+              cursor: isDrawingMode ? "crosshair" : "default"
+            }
+          })
+        ),
+        role === "control" && React.createElement("div", {
+          style: {
+            marginTop: "10px",
+            background: "#222",
+            padding: "10px",
+            borderRadius: "8px"
+          }
+        },
+          React.createElement("label", null,
+            React.createElement("input", {
+              type: "checkbox",
+              checked: isDrawingMode,
+              onChange: () => setIsDrawingMode((p) => !p)
+            }),
+            " Enable/Disable drawing mode"
+          ),
+          React.createElement("button", {
+            onClick: clearCanvas,
+            style: { marginLeft: "10px" }
+          }, "🧹 Clear current drawing")
+        )
+      );
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const role = params.get("role") === "control" ? "control" : "view";
+
+    ReactDOM.render(
+      React.createElement(QuidditchBoard, { role }),
+      document.getElementById("board-root")
+    );
+  </script>
+</body>
+</html>
