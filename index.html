@@ -65,6 +65,14 @@
       .sections { grid-template-columns: 1fr; }
     }
 
+    /* NEW: Equal height alignment for all sections */
+    section {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      min-height: 350px; /* adjust this value if you need more/less spacing */
+    }
+
     .overlay-list {
       list-style: none;
       padding: 0;
@@ -116,7 +124,7 @@
       <h2>Producer Tools</h2>
       <div class="warning">Producer Use Only</div>
       <ul class="overlay-list">
-        <li><a href="https://lghtfury.github.io/league7_Broadcast/panel.html?overlay=startingsoon" target="_blank" rel="noopener noreferrer">Control Panel</a></li>
+        <li><a href="https://lghtfury.github.io/league7_Broadcast/panel.html" target="_blank" rel="noopener noreferrer">Control Panel</a></li>
       </ul>
     </section>
 
