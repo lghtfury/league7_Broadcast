@@ -9,134 +9,219 @@
   <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap" rel="stylesheet">
 
   <style>
+    :root {
+      --bg: #0a0b0e;
+      --text: #e8ecf6;
+      --surface: #10131a;
+      --surface-2: #151a24;
+      --gold-1: #ffd700;
+      --gold-2: #a67c00;
+      --gold-grad: linear-gradient(45deg, var(--gold-1), var(--gold-2));
+      --radius: 14px;
+      --radius-sm: 10px;
+      --shadow: 0 10px 28px rgba(0,0,0,0.35);
+    }
+
     body {
       margin: 0;
       font-family: 'IM Fell English SC', serif;
-      background: #0a0b0e;
-      color: #e8ecf6;
+      background: var(--bg);
+      color: var(--text);
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
       min-height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      padding: 2rem 1.25rem;
+      margin-inline: auto;
       text-align: center;
-      padding: 2em;
     }
 
     h1 {
-      font-size: 3em;
-      margin-bottom: 1em;
-      background: linear-gradient(45deg, #ffd700, #a67c00);
+      font-size: clamp(2rem, 4vw, 3rem);
+      margin: 0 0 1rem;
+      background: var(--gold-grad);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
     h2 {
-      font-size: 2em;
-      margin: 1.5em 0 0.75em;
-      color: #ffd700;
-      text-decoration: underline;
+      font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+      margin: 0 0 0.75rem;
+      color: var(--gold-1);
+      position: relative;
+    }
+    h2::after {
+      content: "";
+      display: block;
+      height: 2px;
+      width: 42px;
+      margin: 0.45rem auto 0;
+      background: var(--gold-grad);
+      border-radius: 2px;
     }
 
-    .warning {
-      margin: 0.5em auto 1.25em;
-      padding: 0.5em 1em;
-      font-size: 1em;
-      font-style: italic;
-      color: #0a0b0e;
-      background: linear-gradient(90deg, #ffd700, #a67c00);
-      border-radius: 8px;
-      display: inline-block;
-    }
-
-    /* NEW: 3-column responsive layout */
-    .sections {
-      width: 100%;
-      max-width: 1200px;
-      display: grid;
-      grid-template-columns: repeat(3, minmax(260px, 1fr));
-      gap: 1.5em;
-      align-items: start;
-    }
-    @media (max-width: 1024px) {
-      .sections { grid-template-columns: repeat(2, minmax(260px, 1fr)); }
-    }
-    @media (max-width: 640px) {
-      .sections { grid-template-columns: 1fr; }
-    }
-
-    /* NEW: Equal height alignment for all sections */
-    section {
+    /* Tabs */
+    .tabs {
       display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      min-height: 350px; /* adjust this value if you need more/less spacing */
+      gap: 0.5rem;
+      justify-content: center;
+      margin: 0 0 1rem;
+      flex-wrap: wrap;
+    }
+    .tab {
+      padding: 0.5rem 0.9rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    .tab.is-active {
+      background: var(--gold-grad);
+      color: #0a0b0e;
+      border-color: transparent;
+    }
+
+    .tabpanels { margin-top: 0.5rem; }
+    .tabpanel { display: none; }
+    .tabpanel.is-active { display: block; }
+
+    /* Section cards */
+    section {
+      background: linear-gradient(180deg, var(--surface), var(--surface-2));
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
     }
 
     .overlay-list {
       list-style: none;
       padding: 0;
-      margin: 0;
+      margin: 0.25rem 0 0;
       width: 100%;
-    }
-
-    .overlay-list li {
-      margin: 1em 0;
+      display: grid;
+      gap: 0.75rem;
     }
 
     .overlay-list a {
       display: block;
       text-decoration: none;
-      font-size: 1.3em;
-      color: #e8ecf6;
-      padding: 0.75em 1em;
+      font-size: 1.05rem;
+      color: var(--text);
+      padding: 0.9rem 1rem;
       border: 2px solid transparent;
-      border-radius: 12px;
-      background: linear-gradient(#0a0b0e, #0a0b0e) padding-box,
-                  linear-gradient(90deg, #ffd700, #a67c00) border-box;
-      transition: all 0.25s ease;
+      border-radius: var(--radius-sm);
+      background:
+        linear-gradient(var(--surface), var(--surface)) padding-box,
+        var(--gold-grad) border-box;
+      transition: transform 120ms ease, background-color 200ms ease, color 120ms ease, box-shadow 200ms ease;
       word-break: break-word;
     }
-
     .overlay-list a:hover {
-      background: linear-gradient(90deg, #ffd700, #a67c00);
+      background: var(--gold-grad);
       color: #0a0b0e;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    }
+    .overlay-list a:active { transform: translateY(0); box-shadow: none; }
+    .overlay-list a:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(255,215,0,0.35);
+    }
+
+    /* Watermark */
+    .watermark {
+      position: fixed;
+      right: 14px;
+      bottom: 10px;
+      z-index: 9999;
+      font-family: 'IM Fell English SC', serif;
+      font-size: 13px;
+      letter-spacing: 0.3px;
+      color: #e8ecf6;
+      opacity: 0.12;
+      user-select: none;
+      pointer-events: none;
+      mix-blend-mode: luminosity;
+    }
+    .watermark .wm-name {
+      background: var(--gold-grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      opacity: 0.6;
+    }
+    @media (hover: hover) {
+      .watermark:hover { opacity: 0.5; }
     }
   </style>
 </head>
 <body>
-  <h1>League 7 Broadcast Hub</h1>
+  <div class="container">
+    <h1>League 7 Broadcast Hub</h1>
 
-  <div class="sections">
-    <!-- Producer Overlays -->
-    <section>
-      <h2>Producer Overlays</h2>
-      <div class="warning">Producer Use Only</div>
-      <ul class="overlay-list">
-        <li><a href="https://lghtfury.github.io/league7_Broadcast/starting_soon" target="_blank" rel="noopener noreferrer">Starting Soon Screen</a></li>
-        <li><a href="https://vdo.ninja/?scene=0&amp;room=League_7_Players&amp;password=season3&amp;sl" target="_blank" rel="noopener noreferrer">Game Play Visuals</a></li>
-        <li><a href="gameplay_overlay.html" target="_blank" rel="noopener noreferrer">Gameplay Overlay</a></li>
-      </ul>
-    </section>
+    <!-- Tabs -->
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab is-active" data-tab="pre">Pre-Show</button>
+      <button class="tab" data-tab="live">Live Match</button>
+      <button class="tab" data-tab="between">Between Games</button>
+      <button class="tab" data-tab="control">Control</button>
+    </nav>
 
-    <!-- Producer Tools -->
-    <section>
-      <h2>Producer Tools</h2>
-      <div class="warning">Producer Use Only</div>
-      <ul class="overlay-list">
-        <li><a href="https://lghtfury.github.io/league7_Broadcast/panel.html" target="_blank" rel="noopener noreferrer">Control Panel</a></li>
-      </ul>
-    </section>
+    <!-- Panels -->
+    <div class="tabpanels">
+      <section class="tabpanel is-active" data-tabpanel="pre">
+        <h2>Pre-Show</h2>
+        <ul class="overlay-list">
+          <li><a href="https://lghtfury.github.io/league7_Broadcast/starting_soon" target="_blank" rel="noopener noreferrer">Starting Soon Screen</a></li>
+        </ul>
+      </section>
 
-    <!-- Commentators Screens -->
-    <section>
-      <h2>Commentators Screens</h2>
-      <ul class="overlay-list">
-        <li><a href="https://vdo.ninja/?scene=0&amp;room=League_7_Players&amp;password=season3&amp;sl" target="_blank" rel="noopener noreferrer">Game Play Visuals</a></li>
-        <li><a href="roster.html" target="_blank" rel="noopener noreferrer">Roster Comparison Chart</a></li>
-        <li><a href="teamvsteam.html" target="_blank" rel="noopener noreferrer">Team vs Team Series Screen</a></li>
-      </ul>
-    </section>
+      <section class="tabpanel" data-tabpanel="live">
+        <h2>Live Match</h2>
+        <ul class="overlay-list">
+          <li><a href="https://vdo.ninja/?scene=0&amp;room=League_7_Players&amp;password=season3&amp;sl" target="_blank" rel="noopener noreferrer">Game Play Visuals</a></li>
+          <li><a href="gameplay_overlay.html" target="_blank" rel="noopener noreferrer">Gameplay Overlay</a></li>
+        </ul>
+      </section>
+
+      <section class="tabpanel" data-tabpanel="between">
+        <h2>Between Games</h2>
+        <ul class="overlay-list">
+          <li><a href="roster.html" target="_blank" rel="noopener noreferrer">Roster Comparison Chart</a></li>
+          <li><a href="teamvsteam.html" target="_blank" rel="noopener noreferrer">Team vs Team Series Screen</a></li>
+        </ul>
+      </section>
+
+      <section class="tabpanel" data-tabpanel="control">
+        <h2>Control</h2>
+        <ul class="overlay-list">
+          <li><a href="https://lghtfury.github.io/league7_Broadcast/panel.html" target="_blank" rel="noopener noreferrer">Control Panel</a></li>
+        </ul>
+      </section>
+    </div>
   </div>
+
+  <!-- Watermark -->
+  <div class="watermark" aria-hidden="true">
+    created by <span class="wm-name">lghtfury</span>
+  </div>
+
+  <script>
+    // Tab switching
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.tab');
+      if (!btn) return;
+      const key = btn.dataset.tab;
+      document.querySelectorAll('.tab').forEach(b => b.classList.toggle('is-active', b === btn));
+      document.querySelectorAll('.tabpanel').forEach(p => p.classList.toggle('is-active', p.dataset.tabpanel === key));
+    });
+  </script>
 </body>
 </html>
