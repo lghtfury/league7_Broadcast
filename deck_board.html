@@ -22,12 +22,16 @@
   *{box-sizing:border-box}
 
   .title{
-    padding:18px 24px 8px;
+    padding:18px 24px 0;
     font-family:"IM Fell English SC",serif;
     font-size:32px; letter-spacing:.4px;
     background:linear-gradient(45deg,var(--gold1),var(--gold2));
     -webkit-background-clip:text; background-clip:text; color:transparent;
     text-align:center;
+  }
+  .asof{
+    text-align:center; margin-top:2px; margin-bottom:8px;
+    font:600 14px/1 Inter,system-ui,sans-serif; color:#b6bed6
   }
 
   .board{max-width:1800px;margin:0 auto;padding:10px 24px 24px;display:flex;flex-direction:column;gap:32px}
@@ -68,6 +72,7 @@
   .teamLogo{width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(0,0,0,.45))}
   .teamName{font-family:"IM Fell English SC",serif;font-size:22px;letter-spacing:.3px;line-height:1.1}
   .hidden{display:none}
+  .nodata{ color:#b6bed6; font-style:italic }
 
   @media (max-width: 1400px){
     :root{ --cardW: 200px; --cardH: 280px }
@@ -79,6 +84,7 @@
 </head>
 <body>
   <div class="title">Season 03 O.W.L.s Standings</div>
+  <div class="asof" id="asOf">As of —</div>
 
   <div class="board">
     <div class="row row1" id="row1"></div>
@@ -91,24 +97,34 @@
 
 <script>
 /** ===== GViz config (your published sheet) ===== **/
-const SHEET_KEY = "2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF"; // published doc key  :contentReference[oaicite:2]{index=2}
-const GID_TEAM_INFO = "495267531";   // Team Information tab
-const GID_MATCHES   = "834810832";   // OWL Match Results tab
+const SHEET_KEY = "2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF";
+const GID_TEAM_INFO = "495267531";   // Team Information tab (Team=A, Division=B, starts row 3)
+const GID_MATCHES   = "834810832";   // OWL Match Results tab (starts row 3)
 
-// Your existing assets
-const L7_BACK = "images/assests/L7_logo_full.png";
+// Assets (fixed: assets, not assests)
+const L7_BACK = "images/assets/L7_logo_full.png";
 const FALLBACK_SMALL = "images/assets/L7_logo_small.png";
 const TEAM_LOGOS = {}; // e.g. { "Nocturn Ravens": "images/teams/rvn.png" }
 
+// DOM refs
 const $r1  = document.getElementById('row1');
 const $r2L = document.getElementById('row2-left');
 const $r2R = document.getElementById('row2-right');
 const $r3  = document.getElementById('row3');
+const $asOf = document.getElementById('asOf');
 
+// Utils
 function slugify(s){return (s||"").toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')}
 function logoFor(n){return TEAM_LOGOS[n] || `images/teams/${slugify(n)}.png`;}
+function isEmptyName(n){ return !n || n==="__EMPTY__"; }
+
 function makeCard({rank,name}){
   const el=document.createElement('div'); el.className='card';
+  const isEmpty = isEmptyName(name);
+  const label = isEmpty ? '<span class="nodata">No data</span>' : name;
+  const logo  = isEmpty ? '' :
+    `<img class="teamLogo" src="${logoFor(name)}" onerror="this.classList.add('hidden')" />`;
+  const rankHtml = `<div class="rank">#${rank}</div>`;
   el.innerHTML=`
     <div class="inner">
       <div class="face back"><div class="backWrap">
@@ -116,24 +132,39 @@ function makeCard({rank,name}){
       </div></div>
       <div class="face front">
         <div class="frontWrap">
-          <div class="rank">#${rank}</div>
-          <img class="teamLogo" src="${logoFor(name)}" onerror="this.classList.add('hidden')" />
-          <div class="teamName">${name}</div>
+          ${rankHtml}
+          ${logo}
+          <div class="teamName">${label}</div>
         </div>
       </div>
     </div>`;
   el.addEventListener('click',()=>{ if(!el.classList.contains('revealed')) el.classList.add('revealed'); });
   return el;
 }
+
+// Keep your original layout exactly
 function renderFromLists(WC,TW){
+  // pad to fixed layout counts: WC=7 slots, TW=6 slots
+  WC = padTo(WC, 7);
+  TW = padTo(TW, 6);
+
   $r1.innerHTML=''; $r2L.innerHTML=''; $r2R.innerHTML=''; $r3.innerHTML='';
-  // Row 1: WC #1–#4 then WC #5
-  WC.slice(0,5).forEach((t,i)=>$r1.appendChild(makeCard({rank:i+1,name:t})));
+
+  // Row 1: WC #1–#5
+  WC.slice(0,5).forEach((t,i)=>$r1.appendChild(makeCard({rank:i+1,name:t||"__EMPTY__"})));
+
   // Row 2: left = WC #6–#7, right = TW #1–#2
-  WC.slice(5,7).forEach((t,i)=>$r2L.appendChild(makeCard({rank:5+i+1,name:t})));
-  TW.slice(0,2).forEach((t,i)=>$r2R.appendChild(makeCard({rank:i+1,name:t})));
+  WC.slice(5,7).forEach((t,i)=>$r2L.appendChild(makeCard({rank:5+i+1,name:t||"__EMPTY__"})));
+  TW.slice(0,2).forEach((t,i)=>$r2R.appendChild(makeCard({rank:i+1,name:t||"__EMPTY__"})));
+
   // Row 3: TW #3–#6
-  TW.slice(2,6).forEach((t,i)=>$r3.appendChild(makeCard({rank:2+i+1,name:t})));
+  TW.slice(2,6).forEach((t,i)=>$r3.appendChild(makeCard({rank:2+i+1,name:t||"__EMPTY__"})));
+}
+
+function padTo(arr, n){
+  const out = arr.slice(0,n);
+  while(out.length < n) out.push("__EMPTY__");
+  return out;
 }
 
 /** ===== GViz helpers ===== **/
@@ -142,63 +173,92 @@ async function gvizQuery(gid, tq){
   const url  = `${base}&tqx=out:json&tq=${encodeURIComponent(tq)}`;
   const res  = await fetch(url, {cache:"no-store"});
   const txt  = await res.text();
-  const json = JSON.parse(txt.replace(/^[^\{]+/,'').replace(/\);?$/,''));
-  return json.table.rows.map(r => r.c.map(c => (c?.v ?? "")));
+  const json = JSON.parse(txt.replace(/^[^{]+/,'').replace(/\);?$/,''));
+  // Prefer formatted value (c.f) for dates; fallback to raw (c.v) otherwise
+  return json.table.rows.map(r => r.c.map(c => (c?.f ?? c?.v ?? "")));
 }
 
 /** ===== Load Team Directory (Team, Division) =====
- * Assuming Team=A, Division=B on Team Information; data begins on row 3.
+ * Reads Team=A, Division=B, data begins row 3
  */
 async function loadTeams(){
-  const rows = await gvizQuery(GID_TEAM_INFO, "select A,B offset 2");
-  const dir = {};
-  for(const [team,div] of rows){
-    const t = String(team||"").trim(); const d = normalizeDivision(div);
-    if(t && d) dir[t] = d;
+  try{
+    const rows = await gvizQuery(GID_TEAM_INFO, "select A,B offset 2");
+    const dir = {};
+    for(const [team,div] of rows){
+      const t = String(team||"").trim(); const d = normalizeDivision(div);
+      if(t && d) dir[t] = d;
+    }
+    return dir;
+  }catch{
+    // If Team Info is unavailable, return empty and we will infer from matches
+    return {};
   }
-  return dir;
 }
 
-/** ===== Load Matches with exact letters (data begins on row 3) =====
- * C = Division, E=TeamA, F=TeamB,
+/** ===== Load Matches (data begins row 3) =====
+ * A = Date, C = Division, E=TeamA, F=TeamB,
  * H,I (G1 A,B) ; J,K (G2 A,B) ; L,M (G3 A,B) ; N,O (G4 A,B) ; P,Q (G5 A,B)
- * R is blank, S=SeriesA, T=SeriesB
+ * S=SeriesA, T=SeriesB
  */
 async function loadMatches(){
   const rows = await gvizQuery(
     GID_MATCHES,
-    "select C,E,F,H,I,J,K,L,M,N,O,P,Q,S,T offset 2"
+    "select A,C,E,F,H,I,J,K,L,M,N,O,P,Q,S,T offset 2"
   );
   return rows.map(r => ({
-    div: String(r[0]||"").trim(),
-    A:   String(r[1]||"").trim(),
-    B:   String(r[2]||"").trim(),
-    g:  [r[3],r[4],r[5],r[6],r[7],r[8],r[9],r[10],r[11],r[12]]
+    dateStr: String(r[0]||"").trim(),   // formatted date string if available
+    div:     String(r[1]||"").trim(),
+    A:       String(r[2]||"").trim(),
+    B:       String(r[3]||"").trim(),
+    g:  [r[4],r[5],r[6],r[7],r[8],r[9],r[10],r[11],r[12],r[13]]
           .map(v => (v===""?null:Number(v))),
-    sA: Number(r[13]),
-    sB: Number(r[14])
+    sA: Number(r[14]),
+    sB: Number(r[15])
   }));
+}
+
+function parseSheetDate(s){
+  // Accept common formats like "9/7/2025", "2025-09-07", etc.
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function mostRecentDate(matches){
+  let best = null;
+  for(const m of matches){
+    const d = parseSheetDate(m.dateStr);
+    if(!d) continue;
+    if(best===null || d > best) best = d;
+  }
+  return best;
 }
 
 /** ===== Standings ===== */
 function normalizeDivision(s){
-  const t = (s||"").toLowerCase().replace(/\s+/g,'');
+  const t = (String(s||"")).toLowerCase().replace(/\s+/g,'');
   if(t==='worldcup'||t==='wc') return 'World Cup';
   if(t==='triwizard'||t==='triwizardcup'||t==='tw') return 'Triwizard';
   return s||'';
 }
+
 function computeStandings(teamDir, matches){
   const mk=(name,div)=>({team:name,division:div,matchW:0,matchL:0,gameW:0,gameL:0,ptsFor:0,ptsAg:0});
   const table = {};
+
+  // Seed from Team Info if present
   Object.entries(teamDir).forEach(([n,d])=> table[n]=mk(n,d));
 
   for(const m of matches){
     const div = normalizeDivision(m.div);
     const A=m.A, B=m.B;
     if(!A||!B||!div) continue;
-    if(!table[A]||!table[B]) continue;
 
-    // Series (preferred)
+    // Ensure both teams exist; if missing from Team Info, infer division from this match row
+    if(!table[A]) table[A]=mk(A,div);
+    if(!table[B]) table[B]=mk(B,div);
+
+    // Series totals drive match wins and game wins
     const sA = Number.isFinite(m.sA) ? m.sA : null;
     const sB = Number.isFinite(m.sB) ? m.sB : null;
     if(sA!==null && sB!==null){
@@ -208,7 +268,7 @@ function computeStandings(teamDir, matches){
       else if(sB>sA){ table[B].matchW++; table[A].matchL++; }
     }
 
-    // Per-game points (optional)
+    // Accumulate per-game points for point differential
     for(let i=0;i<m.g.length;i+=2){
       const a=m.g[i], b=m.g[i+1];
       if(Number.isFinite(a)){ table[A].ptsFor+=a; table[B].ptsAg+=a; }
@@ -216,16 +276,36 @@ function computeStandings(teamDir, matches){
     }
   }
 
+  // Split by division actually stored on team
   const byDiv = {"World Cup":[], "Triwizard":[]};
-  Object.values(table).forEach(t=>{ const k=normalizeDivision(t.division); if(byDiv[k]) byDiv[k].push(t); });
+  Object.values(table).forEach(t=>{
+    const k=normalizeDivision(t.division);
+    if(byDiv[k]) byDiv[k].push(t);
+  });
 
-  // tie-breakers: MatchW → GameWin% → PointDiff → PointsFor → Team name
+  // Tie-breakers per Rule 5.3:
+  // 1) Match series won
+  // 2) Total game wins
+  // 3) Game Win Rate
+  // 4) Point Differential
+  // 5) Points For (stable extra)
+  // 6) Team name (stable UI)
   const rank=(a,b)=>{
+    if(b.matchW!==a.matchW) return b.matchW-a.matchW;
+    if(b.gameW!==a.gameW)   return b.gameW-a.gameW;
+
     const awp=(a.gameW+a.gameL)?a.gameW/(a.gameW+a.gameL):0;
     const bwp=(b.gameW+b.gameL)?b.gameW/(b.gameW+b.gameL):0;
+    if(bwp!==awp) return bwp-awp;
+
     const ad=a.ptsFor-a.ptsAg, bd=b.ptsFor-b.ptsAg;
-    return (b.matchW-a.matchW) || (bwp-awp) || (bd-ad) || (b.ptsFor-a.ptsFor) || a.team.localeCompare(b.team);
+    if(bd!==ad) return bd-ad;
+
+    if(b.ptsFor!==a.ptsFor) return b.ptsFor-a.ptsFor;
+
+    return a.team.localeCompare(b.team);
   };
+
   const WC=(byDiv["World Cup"]||[]).sort(rank).map(t=>t.team);
   const TW=(byDiv["Triwizard"]||[]).sort(rank).map(t=>t.team);
   return {WC,TW};
@@ -236,18 +316,31 @@ function computeStandings(teamDir, matches){
   try{
     const [teams, matches] = await Promise.all([loadTeams(), loadMatches()]);
     const {WC, TW} = computeStandings(teams, matches);
+
+    // Render standings in your original layout (with No data padding)
     renderFromLists(WC, TW);
+
+    // Set "As of" caption from most recent Date (column A)
+    const d = mostRecentDate(matches);
+    if(d){
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      $asOf.textContent = `As of ${yyyy}-${mm}-${dd}`;
+    }else{
+      $asOf.textContent = `As of —`;
+    }
   }catch(err){
     console.error("Standings failed:", err);
     renderFromLists(
-      ["WC Team 1","WC Team 2","WC Team 3","WC Team 4","WC Team 5","WC Team 6","WC Team 7"],
-      ["TW Team 1","TW Team 2","TW Team 3","TW Team 4","TW Team 5","TW Team 6"]
+      ["__EMPTY__","__EMPTY__","__EMPTY__","__EMPTY__","__EMPTY__","__EMPTY__","__EMPTY__"],
+      ["__EMPTY__","__EMPTY__","__EMPTY__","__EMPTY__","__EMPTY__","__EMPTY__"]
     );
+    $asOf.textContent = `As of —`;
   }
 })();
 </script>
 
-<!-- Optional: if/when you want realtime control, you can initialize Firebase with your app config. -->
-<!-- Your Firebase project is 'league7overlay'. This page does not require Firebase to run. :contentReference[oaicite:3]{index=3} -->
+<!-- Optional: if you want realtime control later, init Firebase here. This page does not require Firebase to run. -->
 </body>
 </html>
