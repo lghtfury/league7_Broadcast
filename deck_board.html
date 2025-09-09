@@ -59,7 +59,6 @@
     object-fit:contain;image-rendering:auto;
     filter:drop-shadow(0 2px 8px rgba(0,0,0,.55));
   }
-  .logoFallback{font:800 46px/1 Inter,system-ui,sans-serif;letter-spacing:1px;color:#d7d7db}
 
   .frontWrap{
     height:100%;padding:16px;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;text-align:center
@@ -96,33 +95,81 @@
   </div>
 
 <script>
-/** ===== GViz config (your published sheet) ===== **/
-const SHEET_KEY = "2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF";
-const GID_TEAM_INFO = "495267531";   // Team Information tab (Team=A, Division=B, starts row 3)
-const GID_MATCHES   = "834810832";   // OWL Match Results tab (starts row 3)
+/** ===== CSV endpoint for Match Results (published-to-web CSV) ===== */
+const SHEET_2PACX = "2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF";
+const GID_MATCHES = "834810832";
+const CSV_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_2PACX}/pub?gid=${GID_MATCHES}&single=true&output=csv`;
 
-// Assets (fixed: assets, not assests)
-const L7_BACK = "images/assets/L7_logo_full.png";
-const FALLBACK_SMALL = "images/assets/L7_logo_small.png";
-const TEAM_LOGOS = {}; // e.g. { "Nocturn Ravens": "images/teams/rvn.png" }
+/** ===== Assets (match your repo exactly) ===== */
+const L7_BACK = "images/assests/L7_logo_full.png";   // misspelling intentional
+const FALLBACK_SMALL = "images/assests/L7_logo_small.png";
+const TEAM_LOGOS = {}; // optional overrides { "Team Name": "images/teams/custom.png" }
 
-// DOM refs
+/** ===== DOM ===== */
 const $r1  = document.getElementById('row1');
 const $r2L = document.getElementById('row2-left');
 const $r2R = document.getElementById('row2-right');
 const $r3  = document.getElementById('row3');
 const $asOf = document.getElementById('asOf');
 
-// Utils
-function slugify(s){return (s||"").toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')}
-function logoFor(n){return TEAM_LOGOS[n] || `images/teams/${slugify(n)}.png`;}
+/** ===== Helpers ===== */
+function logoFor(team){
+  if (TEAM_LOGOS[team]) return TEAM_LOGOS[team];
+  // underscore slug to match your existing naming
+  const slug = (team||"").toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  return `images/teams/${slug}.png`;
+}
 function isEmptyName(n){ return !n || n==="__EMPTY__"; }
+function parseDate(s){ const d=new Date(s); return isNaN(d)?null:d; }
 
+/* Bucket divisions without forcing staff to change names.
+   Anything with "world" → World Cup, anything with "tri" → Triwizard. */
+function bucketDivision(raw){
+  const t = String(raw||"").toLowerCase();
+  if (t.includes("world")) return "World Cup";
+  if (t.includes("tri"))   return "Triwizard";
+  return ""; // ignore anything else
+}
+
+/** Robust CSV parse (handles quotes + commas) and auto-detect header line */
+function parseCSV(text){
+  const rows=[]; let i=0, field="", row=[], inQ=false;
+  const pushF=()=>{row.push(field);field="";}; const pushR=()=>{rows.push(row);row=[];};
+  while(i<text.length){
+    const c=text[i];
+    if(inQ){
+      if(c=== '"'){ if(text[i+1]==='"'){field+='"'; i++;} else inQ=false; }
+      else field+=c;
+    }else{
+      if(c=== '"') inQ=true;
+      else if(c=== ',') pushF();
+      else if(c=== '\n'){ pushF(); pushR(); }
+      else if(c!== '\r') field+=c;
+    }
+    i++;
+  }
+  if(field.length||row.length){ pushF(); pushR(); }
+
+  // find header row by "Date" in col0 (case-insensitive)
+  let start = 0;
+  for (let r=0; r<Math.min(rows.length,5); r++){
+    if ((rows[r][0]||"").toLowerCase() === "date"){ start = r+1; break; }
+  }
+  const data=[];
+  for (let r=start; r<rows.length; r++){
+    const vals = rows[r].map(v => (v??"").trim());
+    if (vals.every(v=>v==="")) continue;
+    data.push(vals);
+  }
+  return data;
+}
+
+/** ===== Cards ===== */
 function makeCard({rank,name}){
   const el=document.createElement('div'); el.className='card';
-  const isEmpty = isEmptyName(name);
-  const label = isEmpty ? '<span class="nodata">No data</span>' : name;
-  const logo  = isEmpty ? '' :
+  const empty = isEmptyName(name);
+  const label = empty ? '<span class="nodata">No data</span>' : name;
+  const logo  = empty ? '' :
     `<img class="teamLogo" src="${logoFor(name)}" onerror="this.classList.add('hidden')" />`;
   const rankHtml = `<div class="rank">#${rank}</div>`;
   el.innerHTML=`
@@ -142,196 +189,118 @@ function makeCard({rank,name}){
   return el;
 }
 
-// Keep your original layout exactly
+/** Keep your original deck layout exactly */
 function renderFromLists(WC,TW){
-  // pad to fixed layout counts: WC=7 slots, TW=6 slots
-  WC = padTo(WC, 7);
-  TW = padTo(TW, 6);
-
+  WC = padTo(WC,7);
+  TW = padTo(TW,6);
   $r1.innerHTML=''; $r2L.innerHTML=''; $r2R.innerHTML=''; $r3.innerHTML='';
 
   // Row 1: WC #1–#5
   WC.slice(0,5).forEach((t,i)=>$r1.appendChild(makeCard({rank:i+1,name:t||"__EMPTY__"})));
-
-  // Row 2: left = WC #6–#7, right = TW #1–#2
+  // Row 2 left: WC #6–#7
   WC.slice(5,7).forEach((t,i)=>$r2L.appendChild(makeCard({rank:5+i+1,name:t||"__EMPTY__"})));
+  // Row 2 right: TW #1–#2
   TW.slice(0,2).forEach((t,i)=>$r2R.appendChild(makeCard({rank:i+1,name:t||"__EMPTY__"})));
-
   // Row 3: TW #3–#6
   TW.slice(2,6).forEach((t,i)=>$r3.appendChild(makeCard({rank:2+i+1,name:t||"__EMPTY__"})));
 }
+function padTo(arr,n){ const out=arr.slice(0,n); while(out.length<n) out.push("__EMPTY__"); return out; }
 
-function padTo(arr, n){
-  const out = arr.slice(0,n);
-  while(out.length < n) out.push("__EMPTY__");
-  return out;
-}
-
-/** ===== GViz helpers ===== **/
-async function gvizQuery(gid, tq){
-  const base = `https://docs.google.com/spreadsheets/d/e/${SHEET_KEY}/gviz/tq?gid=${gid}`;
-  const url  = `${base}&tqx=out:json&tq=${encodeURIComponent(tq)}`;
-  const res  = await fetch(url, {cache:"no-store"});
-  const txt  = await res.text();
-  const json = JSON.parse(txt.replace(/^[^{]+/,'').replace(/\);?$/,''));
-  // Prefer formatted value (c.f) for dates; fallback to raw (c.v) otherwise
-  return json.table.rows.map(r => r.c.map(c => (c?.f ?? c?.v ?? "")));
-}
-
-/** ===== Load Team Directory (Team, Division) =====
- * Reads Team=A, Division=B, data begins row 3
+/** ===== Standings from CSV (matches your sheet columns) =====
+ * 0 Date, 1 Staff, 2 Division, 3 MatchID, 4 TeamA, 5 TeamB,
+ * 6 spacer, 7 H (G1 A), 8 I (G1 B), 9 J (G2 A), 10 K (G2 B),
+ * 11 L (G3 A), 12 M (G3 B), 13 N (G4 A), 14 O (G4 B),
+ * 15 P (G5 A), 16 Q (G5 B), 17 spacer, 18 S (SeriesA), 19 T (SeriesB)
  */
-async function loadTeams(){
-  try{
-    const rows = await gvizQuery(GID_TEAM_INFO, "select A,B offset 2");
-    const dir = {};
-    for(const [team,div] of rows){
-      const t = String(team||"").trim(); const d = normalizeDivision(div);
-      if(t && d) dir[t] = d;
-    }
-    return dir;
-  }catch{
-    // If Team Info is unavailable, return empty and we will infer from matches
-    return {};
-  }
-}
+function computeStandings(rows){
+  const table = {}; // team -> stats
+  let latest=null;
 
-/** ===== Load Matches (data begins row 3) =====
- * A = Date, C = Division, E=TeamA, F=TeamB,
- * H,I (G1 A,B) ; J,K (G2 A,B) ; L,M (G3 A,B) ; N,O (G4 A,B) ; P,Q (G5 A,B)
- * S=SeriesA, T=SeriesB
- */
-async function loadMatches(){
-  const rows = await gvizQuery(
-    GID_MATCHES,
-    "select A,C,E,F,H,I,J,K,L,M,N,O,P,Q,S,T offset 2"
-  );
-  return rows.map(r => ({
-    dateStr: String(r[0]||"").trim(),   // formatted date string if available
-    div:     String(r[1]||"").trim(),
-    A:       String(r[2]||"").trim(),
-    B:       String(r[3]||"").trim(),
-    g:  [r[4],r[5],r[6],r[7],r[8],r[9],r[10],r[11],r[12],r[13]]
-          .map(v => (v===""?null:Number(v))),
-    sA: Number(r[14]),
-    sB: Number(r[15])
-  }));
-}
+  const ensure=(name,div)=>{
+    if(!name) return;
+    if(!table[name]) table[name]={team:name,division:div,matchW:0,matchL:0,gameW:0,gameL:0,ptsFor:0,ptsAg:0};
+  };
 
-function parseSheetDate(s){
-  // Accept common formats like "9/7/2025", "2025-09-07", etc.
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
-}
+  for(const r of rows){
+    const dateStr=r[0]||"";
+    const divRaw=r[2]||"";
+    const A=(r[4]||"").trim();
+    const B=(r[5]||"").trim();
+    if(!A||!B) continue;
 
-function mostRecentDate(matches){
-  let best = null;
-  for(const m of matches){
-    const d = parseSheetDate(m.dateStr);
-    if(!d) continue;
-    if(best===null || d > best) best = d;
-  }
-  return best;
-}
+    const bucket=bucketDivision(divRaw);
+    if(!bucket) continue;
 
-/** ===== Standings ===== */
-function normalizeDivision(s){
-  const t = (String(s||"")).toLowerCase().replace(/\s+/g,'');
-  if(t==='worldcup'||t==='wc') return 'World Cup';
-  if(t==='triwizard'||t==='triwizardcup'||t==='tw') return 'Triwizard';
-  return s||'';
-}
+    const d=parseDate(dateStr); if(d && (!latest||d>latest)) latest=d;
 
-function computeStandings(teamDir, matches){
-  const mk=(name,div)=>({team:name,division:div,matchW:0,matchL:0,gameW:0,gameL:0,ptsFor:0,ptsAg:0});
-  const table = {};
+    ensure(A,bucket); ensure(B,bucket);
 
-  // Seed from Team Info if present
-  Object.entries(teamDir).forEach(([n,d])=> table[n]=mk(n,d));
-
-  for(const m of matches){
-    const div = normalizeDivision(m.div);
-    const A=m.A, B=m.B;
-    if(!A||!B||!div) continue;
-
-    // Ensure both teams exist; if missing from Team Info, infer division from this match row
-    if(!table[A]) table[A]=mk(A,div);
-    if(!table[B]) table[B]=mk(B,div);
-
-    // Series totals drive match wins and game wins
-    const sA = Number.isFinite(m.sA) ? m.sA : null;
-    const sB = Number.isFinite(m.sB) ? m.sB : null;
-    if(sA!==null && sB!==null){
-      table[A].gameW += sA; table[A].gameL += sB;
-      table[B].gameW += sB; table[B].gameL += sA;
-      if(sA>sB){ table[A].matchW++; table[B].matchL++; }
-      else if(sB>sA){ table[B].matchW++; table[A].matchL++; }
-    }
-
-    // Accumulate per-game points for point differential
-    for(let i=0;i<m.g.length;i+=2){
-      const a=m.g[i], b=m.g[i+1];
+    // collect game scores (handle short rows safely)
+    const idx=[7,8, 9,10, 11,12, 13,14, 15,16];
+    const vals=idx.map(i => (r[i]==null||r[i]==="") ? null : Number(r[i]));
+    let gwA=0, gwB=0;
+    for(let i=0;i<vals.length;i+=2){
+      const a=vals[i], b=vals[i+1];
       if(Number.isFinite(a)){ table[A].ptsFor+=a; table[B].ptsAg+=a; }
       if(Number.isFinite(b)){ table[B].ptsFor+=b; table[A].ptsAg+=b; }
+      if(Number.isFinite(a)&&Number.isFinite(b)){
+        if(a>b) gwA++; else if(b>a) gwB++;
+      }
     }
+
+    // series totals with fallback
+    const sA = (r[18]!==undefined && r[18]!=="") ? Number(r[18]) : null;
+    const sB = (r[19]!==undefined && r[19]!=="") ? Number(r[19]) : null;
+    const useA = Number.isFinite(sA) ? sA : gwA;
+    const useB = Number.isFinite(sB) ? sB : gwB;
+
+    table[A].gameW += useA; table[A].gameL += useB;
+    table[B].gameW += useB; table[B].gameL += useA;
+    if(useA>useB){ table[A].matchW++; table[B].matchL++; }
+    else if(useB>useA){ table[B].matchW++; table[A].matchL++; }
   }
 
-  // Split by division actually stored on team
-  const byDiv = {"World Cup":[], "Triwizard":[]};
-  Object.values(table).forEach(t=>{
-    const k=normalizeDivision(t.division);
-    if(byDiv[k]) byDiv[k].push(t);
-  });
+  const groups={"World Cup":[],"Triwizard":[]};
+  Object.values(table).forEach(t=>{ if(groups[t.division]) groups[t.division].push(t); });
 
-  // Tie-breakers per Rule 5.3:
-  // 1) Match series won
-  // 2) Total game wins
-  // 3) Game Win Rate
-  // 4) Point Differential
-  // 5) Points For (stable extra)
-  // 6) Team name (stable UI)
+  // Rule 5.3 tie-breakers
   const rank=(a,b)=>{
-    if(b.matchW!==a.matchW) return b.matchW-a.matchW;
-    if(b.gameW!==a.gameW)   return b.gameW-a.gameW;
-
+    if(b.matchW!==a.matchW) return b.matchW-a.matchW;             // series wins
+    if(b.gameW!==a.gameW)   return b.gameW-a.gameW;               // total game wins
     const awp=(a.gameW+a.gameL)?a.gameW/(a.gameW+a.gameL):0;
     const bwp=(b.gameW+b.gameL)?b.gameW/(b.gameW+b.gameL):0;
-    if(bwp!==awp) return bwp-awp;
-
+    if(bwp!==awp) return bwp-awp;                                  // game win rate
     const ad=a.ptsFor-a.ptsAg, bd=b.ptsFor-b.ptsAg;
-    if(bd!==ad) return bd-ad;
-
-    if(b.ptsFor!==a.ptsFor) return b.ptsFor-a.ptsFor;
-
+    if(bd!==ad) return bd-ad;                                      // point diff
+    if(b.ptsFor!==a.ptsFor) return b.ptsFor-a.ptsFor;              // points for
     return a.team.localeCompare(b.team);
   };
 
-  const WC=(byDiv["World Cup"]||[]).sort(rank).map(t=>t.team);
-  const TW=(byDiv["Triwizard"]||[]).sort(rank).map(t=>t.team);
-  return {WC,TW};
+  const WC = (groups["World Cup"]||[]).sort(rank).map(t=>t.team);
+  const TW = (groups["Triwizard"]||[]).sort(rank).map(t=>t.team);
+  return {WC,TW,latest};
 }
 
-/** ===== Bootstrap ===== */
+/** ===== Boot ===== */
 (async()=>{
   try{
-    const [teams, matches] = await Promise.all([loadTeams(), loadMatches()]);
-    const {WC, TW} = computeStandings(teams, matches);
+    const res = await fetch(CSV_URL, {cache:"no-store"});
+    if(!res.ok) throw new Error(`CSV fetch failed: ${res.status}`);
+    const text = await res.text();
 
-    // Render standings in your original layout (with No data padding)
-    renderFromLists(WC, TW);
+    const rows = parseCSV(text);
+    const {WC,TW,latest} = computeStandings(rows);
 
-    // Set "As of" caption from most recent Date (column A)
-    const d = mostRecentDate(matches);
-    if(d){
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth()+1).padStart(2,'0');
-      const dd = String(d.getDate()).padStart(2,'0');
-      $asOf.textContent = `As of ${yyyy}-${mm}-${dd}`;
-    }else{
+    renderFromLists(WC,TW);
+
+    if(latest){
+      const y=latest.getFullYear(), m=String(latest.getMonth()+1).padStart(2,'0'), d=String(latest.getDate()).padStart(2,'0');
+      $asOf.textContent = `As of ${y}-${m}-${d}`;
+    } else {
       $asOf.textContent = `As of —`;
     }
-  }catch(err){
-    console.error("Standings failed:", err);
+  }catch(e){
+    console.error(e);
     renderFromLists(
       ["__EMPTY__","__EMPTY__","__EMPTY__","__EMPTY__","__EMPTY__","__EMPTY__","__EMPTY__"],
       ["__EMPTY__","__EMPTY__","__EMPTY__","__EMPTY__","__EMPTY__","__EMPTY__"]
@@ -341,6 +310,5 @@ function computeStandings(teamDir, matches){
 })();
 </script>
 
-<!-- Optional: if you want realtime control later, init Firebase here. This page does not require Firebase to run. -->
 </body>
 </html>
