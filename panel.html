@@ -352,7 +352,18 @@ async function loadTeamColors(){
     const pri  = rows[i][2]?.trim();
     const sec  = rows[i][3]?.trim();
     if(!name) continue;
-    const fix = h => h ? (h.startsWith('#') ? h : '#'+h) : '';
+
+    // UPDATED: safer fix that always returns valid #RRGGBB or a fallback
+    const fix = h => {
+      if (!h) return '#555555';
+      let v = String(h).trim();
+      if (!v.startsWith('#')) v = '#'+v;
+      if (/^#[0-9a-f]{3}$/i.test(v)) {
+        v = '#'+v[1]+v[1]+v[2]+v[2]+v[3]+v[3];
+      }
+      return /^#[0-9a-f]{6}$/i.test(v) ? v.toUpperCase() : '#555555';
+    };
+
     TEAM_COLORS.set(name, { primary: fix(pri), secondary: fix(sec) });
   }
 }
@@ -388,6 +399,9 @@ function onMatchPicked(){
   setP($('#A1picker'), A.primary); setP($('#A2picker'), A.secondary);
   setP($('#B1picker'), B.primary); setP($('#B2picker'), B.secondary);
 
+  // UPDATED: guarantee preview refresh even if values didn't change
+  renderPreview();
+
   /* prefill ticker matchup to mirror selected teams */
   const tm = document.getElementById('tickerMatch');
   if (tm) tm.value = `${m.teamA || 'Team A'} vs ${m.teamB || 'Team B'}`;
@@ -411,6 +425,10 @@ async function boot(){
   try{
     await Promise.all([loadTeamColors(), loadMatches()]);
     $('#matchId').addEventListener('change', onMatchPicked);
+
+    // UPDATED: if a match is already selected (fast click), apply it now
+    if ($('#matchId').value) onMatchPicked();
+
     $('#matchId').options.length ? setStatus('Sheet connected ✔', 'ok') : setStatus('No matches found', 'warn');
   }catch(e){
     console.error(e);
