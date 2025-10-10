@@ -111,8 +111,146 @@
         <a class="btn" href="#team-OWL">OWL</a>
         <a class="btn" href="#team-OP">OP</a>
       </div>
-    </footer>
-  </div>
+    </header>
+      <main>
+        <!-- ===== INTRO SLIDE ===== -->
+        <section id="s-intro" class="slide intro">
+          <div class="card" style="padding:28px; max-width:960px">
+            <span class="pill">Black & Gold Broadcast Pack</span>
+            <h2>Season 3 • O.W.L.s Recap</h2>
+            <p>Overview, Standings, and Team-by-Team breakdowns for Triwizard & World Cup divisions.</p>
+          </div>
+        </section>
+
+        <!-- ===== WORLD CUP OVERVIEW (TABLE + H2H) ===== -->
+        <section id="s-wc-overview" class="slide standings">
+          <div class="card" style="padding:18px">
+            <h4>World Cup Division — Team Statistics</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th class="col-team">Team</th>
+                  <th>MW</th><th>GW</th><th>GWR</th><th>PS</th><th>PC</th><th>#M</th><th>#G</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="col-team"><img class="logo team-logo" data-team="CC" alt="Crazy Comms"/> Crazy Comms</td>
+                  <td>6</td><td>12</td><td>85.7%</td><td>1110</td><td>420</td><td>6</td><td>14</td>
+                </tr>
+                <tr>
+                  <td class="col-team"><img class="logo team-logo" data-team="BNG" alt="Azkabangers"/> Azkabangers</td>
+                  <td>5</td><td>10</td><td>71.4%</td><td>1040</td><td>720</td><td>6</td><td>14</td>
+                </tr>
+                <tr>
+                  <td class="col-team"><img class="logo team-logo" data-team="DQC" alt="DQC"/> Dumbledorks Quidditch Club</td>
+                  <td>4</td><td>10</td><td>58.8%</td><td>1010</td><td>930</td><td>6</td><td>17</td>
+                </tr>
+                <tr>
+                  <td class="col-team"><img class="logo team-logo" data-team="TI" alt="Thin Ice"/> Thin Ice</td>
+                  <td>3</td><td>9</td><td>60.0%</td><td>1060</td><td>790</td><td>6</td><td>15</td>
+                </tr>
+                <tr>
+                  <td class="col-team"><img class="logo team-logo" data-team="BD" alt="Bad Dwagons"/> Bad Dwagons</td>
+                  <td>2</td><td>5</td><td>35.7%</td><td>710</td><td>840</td><td>6</td><td>14</td>
+                </tr>
+                <tr>
+                  <td class="col-team"><img class="logo team-logo" data-team="OBS" alt="Obscurus Quidditch Club"/> Obscurus Quidditch Club</td>
+                  <td>1</td><td>3</td><td>23.1%</td><td>400</td><td>970</td><td>6</td><td>13</td>
+                </tr>
+                <tr>
+                  <td class="col-team"><img class="logo team-logo" data-team="NHK" alt="Nimbus Nighthawks"/> Nimbus Nighthawks</td>
+                  <td>0</td><td>1</td><td>7.7%</td><td>450</td><td>1110</td><td>6</td><td>13</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h4 style="margin-top:22px">World Cup — Team vs. Team</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th>Team vs. Team</th>
+                  <th>Azkabangers</th>
+                  <th>Bad Dwagons</th>
+                  <th>Crazy Comms</th>
+                  <th>Dumbledorks Quidditch Club</th>
+                  <th>Nimbus Nighthawks</th>
+                  <th>Obscurus Quidditch Club</th>
+                  <th>Thin Ice</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Azkabangers</td><td>—</td><td>2-0</td><td>0-2</td><td>2-1</td><td>2-0</td><td>2-0</td><td>2-1</td></tr>
+                <tr><td>Bad Dwagons</td><td>0-2</td><td>—</td><td>0-2</td><td>1-2</td><td>2-1</td><td>2-0</td><td>0-2</td></tr>
+                <tr><td>Crazy Comms</td><td>2-0</td><td>2-0</td><td>—</td><td>2-1</td><td>2-0</td><td>2-0</td><td>2-1</td></tr>
+                <tr><td>Dumbledorks Quidditch Club</td><td>1-2</td><td>2-1</td><td>1-2</td><td>—</td><td>2-0</td><td>2-1</td><td>2-1</td></tr>
+                <tr><td>Nimbus Nighthawks</td><td>0-2</td><td>1-2</td><td>0-2</td><td>0-2</td><td>—</td><td>0-2</td><td>0-2</td></tr>
+                <tr><td>Obscurus Quidditch Club</td><td>0-2</td><td>0-2</td><td>0-2</td><td>1-2</td><td>2-0</td><td>—</td><td>0-2</td></tr>
+                <tr><td>Thin Ice</td><td>1-2</td><td>2-0</td><td>1-2</td><td>1-2</td><td>2-0</td><td>2-0</td><td>—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ===== TRIWIZARD OVERVIEW (TABLE + H2H) ===== -->
+        <section id="s-tri-standings" class="slide standings">
+          <div class="card" style="padding:18px">
+            <h4>Triwizard Cup Division — Team Statistics</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th class="col-team">Team</th>
+                  <th>MW</th><th>GW</th><th>GWR</th><th>PS</th><th>PC</th><th>#M</th><th>#G</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="col-team"><img class="logo team-logo" data-team="RVN" alt="Knockturn Ravens"/> Knockturn Ravens</td>
+                  <td>3</td><td>6</td><td>66.7%</td><td>650</td><td>460</td><td>4</td><td>9</td>
+                </tr>
+                <tr>
+                  <td class="col-team"><img class="logo team-logo" data-team="HAG" alt="Wildcard Hagrids"/> Wildcard Hagrids</td>
+                  <td>3</td><td>6</td><td>66.7%</td><td>640</td><td>570</td><td>4</td><td>9</td>
+                </tr>
+                <tr>
+                  <td class="col-team"><img class="logo team-logo" data-team="HOG" alt="Hellfire Hogs"/> Hellfire Hogs</td>
+                  <td>2</td><td>6</td><td>60.0%</td><td>710</td><td>610</td><td>4</td><td>10</td>
+                </tr>
+                <tr>
+                  <td class="col-team"><img class="logo team-logo" data-team="OWL" alt="Oakshaft Owls"/> Oakshaft Owls</td>
+                  <td>2</td><td>5</td><td>50.0%</td><td>730</td><td>730</td><td>4</td><td>10</td>
+                </tr>
+                <tr>
+                  <td class="col-team"><img class="logo team-logo" data-team="OP" alt="The Order of the Phoenoobz"/> The Order of the Phoenoobz</td>
+                  <td>0</td><td>0</td><td>0.0%</td><td>300</td><td>660</td><td>4</td><td>8</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h4 style="margin-top:22px">Triwizard — Team vs. Team</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th>Team vs. Team</th>
+                  <th>Hellfire Hogs</th>
+                  <th>Knockturn Ravens</th>
+                  <th>Oakshaft Owls</th>
+                  <th>The Order of the Phoenoobz</th>
+                  <th>Wildcard Hagrids</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Hellfire Hogs</td><td>—</td><td>0-2</td><td>1-2</td><td>2-0</td><td>1-2</td></tr>
+                <tr><td>Knockturn Ravens</td><td>2-0</td><td>—</td><td>2-1</td><td>2-0</td><td>2-0</td></tr>
+                <tr><td>Oakshaft Owls</td><td>2-1</td><td>1-2</td><td>—</td><td>2-0</td><td>0-2</td></tr>
+                <tr><td>The Order of the Phoenoobz</td><td>0-2</td><td>0-2</td><td>0-2</td><td>—</td><td>0-2</td></tr>
+                <tr><td>Wildcard Hagrids</td><td>2-1</td><td>0-2</td><td>2-0</td><td>2-0</td><td>—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
 <script>
 // Robust logo loader — tries multiple file name patterns & extensions
 (function(){
