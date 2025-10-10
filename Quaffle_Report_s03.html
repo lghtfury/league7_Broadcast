@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quaffle Report - Season 3</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  body {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    background-color: #0e0e0e;
+    color: #fff;
+  }
+
+  section {
+    display: none;
+    height: 100vh;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+
+  section:target {
+    display: flex;
+  }
+
+  a.nav {
+    color: #d6b24c;
+    text-decoration: none;
+    margin: 10px;
+    font-weight: bold;
+  }
+
+  .intro {
+    text-align: center;
+  }
+
+  .intro img {
+    width: 200px;
+    margin-bottom: 20px;
+  }
+
+  .title {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 80%;
+    margin: 20px auto;
+    color: #fff;
+    background: #141414;
+  }
+
+  th, td {
+    border: 1px solid #333;
+    padding: 10px;
+    text-align: center;
+  }
+
+  th {
+    background-color: #1f1f1f;
+    color: #d6b24c;
+  }
+
+  .team-page {
+    width: 90%;
+    max-width: 1100px;
+    background-color: #141414;
+    border: 1px solid #333;
+    padding: 30px;
+    border-radius: 10px;
+  }
+
+  .team-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .team-header img {
+    width: 120px;
+  }
+
+  .team-header h1 {
+    font-size: 2.2rem;
+    color: #d6b24c;
+    text-transform: uppercase;
+  }
+
+  .captain-info {
+    text-align: right;
+    font-size: 1rem;
+  }
+
+  .captain-info b {
+    color: #d6b24c;
+  }
+
+  .match-results, .roster {
+    margin-top: 20px;
+  }
+
+  .roster span {
+    display: inline-block;
+    background: #222;
+    color: #fff;
+    border: 1px solid #444;
+    padding: 5px 10px;
+    margin: 5px;
+    border-radius: 5px;
+  }
+
+  footer {
+    position: absolute;
+    bottom: 20px;
+    text-align: center;
+    width: 100%;
+  }
+
+  footer a {
+    color: #d6b24c;
+    margin: 0 10px;
+    text-decoration: none;
+  }
+</style>
+</head>
+
+<body>
+
+<!-- Navigation -->
+<footer>
+  <a href="#intro">Intro</a> |
+  <a href="#tw-title">Triwizard</a> |
+  <a href="#tw-standings">Standings</a> |
+  <a href="#team-hog">Team Page</a>
+</footer>
+
+<!-- INTRO -->
+<section id="intro" class="intro">
+  <img src="images/assets/L7_logo_full.png" alt="League 7 Logo" />
+  <h1 class="title">Quaffle Report: Season 3</h1>
+  <p>The O.W.L.s phase is complete — and the numbers tell the story.</p>
+  <p><a class="nav" href="#tw-title">▶ Continue to Triwizard Division</a></p>
+</section>
+
+<!-- TRI TITLE -->
+<section id="tw-title">
+  <div class="intro">
+    <h1 class="title">Triwizard Cup Division</h1>
+    <p>Stats, Standings, and Team Breakdowns</p>
+    <p><a class="nav" href="#tw-standings">View Standings</a></p>
+  </div>
+</section>
+
+<!-- TRI STANDINGS -->
+<section id="tw-standings">
+  <div>
+    <h1 class="title">O.W.L.s Standings</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Team</th>
+          <th>MW</th>
+          <th>GW</th>
+          <th>GWR</th>
+          <th>PS</th>
+          <th>PC</th>
+          <th>#M</th>
+          <th>#G</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Knockturn Ravens</td><td>3</td><td>6</td><td>66.7%</td><td>650</td><td>460</td><td>4</td><td>9</td></tr>
+        <tr><td>Wildcard Hagrids</td><td>3</td><td>6</td><td>66.7%</td><td>640</td><td>570</td><td>4</td><td>9</td></tr>
+        <tr><td>Hellfire Hogs</td><td>2</td><td>6</td><td>60.0%</td><td>710</td><td>610</td><td>4</td><td>10</td></tr>
+        <tr><td>Oakshaft Owls</td><td>2</td><td>5</td><td>50.0%</td><td>730</td><td>730</td><td>4</td><td>10</td></tr>
+        <tr><td>The Order of the Phoenoobz</td><td>0</td><td>0</td><td>0.0%</td><td>300</td><td>660</td><td>4</td><td>8</td></tr>
+      </tbody>
+    </table>
+    <p><a class="nav" href="#team-hog">Next: Team Page</a></p>
+  </div>
+</section>
+
+<!-- TEAM PAGE TEMPLATE (HELLFIRE HOGS PLACEHOLDER) -->
+<section id="team-hog">
+  <div class="team-page">
+    <div class="team-header">
+      <img src="images/teams/HOG.png" alt="Hellfire Hogs Logo" />
+      <h1>Hellfire Hogs</h1>
+      <div class="captain-info">
+        <p><b>Captain:</b> CraftCat9</p>
+        <p><b>Co-Captain:</b> N/A</p>
+      </div>
+    </div>
+
+    <div class="match-results">
+      <h2>Match Results</h2>
+      <table>
+        <tr><th>Opponent</th><th>Score</th><th>Result</th></tr>
+        <tr><td>Knockturn Ravens</td><td>0-2</td><td>L</td></tr>
+        <tr><td>Oakshaft Owls</td><td>2-1</td><td>W</td></tr>
+        <tr><td>Wildcard Hagrids</td><td>1-2</td><td>L</td></tr>
+        <tr><td>The Order of the Phoenoobz</td><td>2-0</td><td>W</td></tr>
+      </table>
+    </div>
+
+    <div class="roster">
+      <h2>Roster</h2>
+      <span>CraftCat9</span>
+      <span>Oof</span>
+      <span>namesVALOR</span>
+      <span>GreenBlackCat</span>
+      <span>Avada</span>
+    </div>
+
+    <p style="margin-top:20px;">
+      <a class="nav" href="#tw-standings">⬅ Back to Standings</a>
+    </p>
+  </div>
+</section>
+
+</body>
+</html>
