@@ -80,10 +80,6 @@
     <!-- TOP: Header + Teams -->
     <div class="card">
       <div class="match-head">
-        <div>
-          <label>Match ID</label>
-          <select id="matchId"><option value="">Loading…</option></select>
-        </div>
         <div class="stack right">
           <button id="btnClearAll" class="btn ghost">Clear Scores</button>
 
@@ -246,7 +242,6 @@ function savePanelCfg(){
 }
 
 /* ===== CSV helpers (Google Sheets publish-to-csv) ===== */
-const MATCHES_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=834810832&single=true&output=csv";
 const TEAMS_CSV   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE9zzuZk-G-NTbxyXn9EkrMyUVoDexXP2Hu3vpuMsQPrLhxF_MxqSw-oNhC2BMs__dINFP3RR6f4sF/pub?gid=495267531&single=true&output=csv";
 
 function parseCSV(text){
@@ -340,8 +335,7 @@ function setBinStatus(msg, kind){
   if (kind) el.classList.add(kind);
 }
 
-/* ===== Google Sheets: auto-populate on Match ID change ===== */
-let MATCH_ROWS = []; // [{id, teamA, teamB}]
+/* ===== Google Sheets: load team colors only ===== */
 let TEAM_COLORS = new Map(); // name -> {primary, secondary}
 
 async function loadTeamColors(){
@@ -368,47 +362,6 @@ async function loadTeamColors(){
   }
 }
 
-async function loadMatches(){
-  const txt = await (await fetch(MATCHES_CSV, {cache:'no-store'})).text();
-  const rows = parseCSV(txt);
-  MATCH_ROWS = [];
-  for(let i=2;i<rows.length;i++){
-    const row = rows[i];
-    const id = (row[3]||'').trim();      // Column D
-    const teamA = (row[4]||'').trim();   // Column E
-    const teamB = (row[5]||'').trim();   // Column F
-    if(id) MATCH_ROWS.push({id, teamA, teamB});
-  }
-  const sel = $('#matchId');
-  sel.innerHTML = `<option value="">Select…</option>` + MATCH_ROWS.map(m=>`<option value="${m.id}">${m.id}</option>`).join('');
-}
-
-function onMatchPicked(){
-  const id = $('#matchId').value.trim();
-  if(!id) return;
-  const m = MATCH_ROWS.find(x=>x.id === id);
-  if(!m) return;
-
-  $('#teamAName').value = m.teamA || 'Team A';
-  $('#teamBName').value = m.teamB || 'Team B';
-
-  const A = TEAM_COLORS.get(m.teamA) || {};
-  const B = TEAM_COLORS.get(m.teamB) || {};
-
-  const setP = (picker,val)=>{ if(hexOK(val)){ picker.value = val; picker.dispatchEvent(new Event('input')); } };
-  setP($('#A1picker'), A.primary); setP($('#A2picker'), A.secondary);
-  setP($('#B1picker'), B.primary); setP($('#B2picker'), B.secondary);
-
-  // UPDATED: guarantee preview refresh even if values didn't change
-  renderPreview();
-
-  /* prefill ticker matchup to mirror selected teams */
-  const tm = document.getElementById('tickerMatch');
-  if (tm) tm.value = `${m.teamA || 'Team A'} vs ${m.teamB || 'Team B'}`;
-
-  setStatus(`Loaded from sheet: ${id}`, 'ok');
-}
-
 async function boot(){
   loadPanelCfg();
   renderPreview();
@@ -423,13 +376,7 @@ async function boot(){
   }
 
   try{
-    await Promise.all([loadTeamColors(), loadMatches()]);
-    $('#matchId').addEventListener('change', onMatchPicked);
-
-    // UPDATED: if a match is already selected (fast click), apply it now
-    if ($('#matchId').value) onMatchPicked();
-
-    $('#matchId').options.length ? setStatus('Sheet connected ✔', 'ok') : setStatus('No matches found', 'warn');
+    await loadTeamColors();
   }catch(e){
     console.error(e);
     setStatus('Sheet read failed', 'err');
@@ -560,14 +507,12 @@ document.getElementById("btnPushRosters").addEventListener("click", async () => 
 
 // Push to TVT (also sync ticker matchup)
 document.getElementById("btnPushTVT").addEventListener("click", async () => {
-  const matchId  = (document.getElementById('matchId').value || '').trim();
   const teamA    = (document.getElementById('teamAName').value || 'Team A').trim();
   const teamB    = (document.getElementById('teamBName').value || 'Team B').trim();
   const seriesA  = Number(document.getElementById('seriesA').value) || 0;
   const seriesB  = Number(document.getElementById('seriesB').value) || 0;
 
   const payload = {
-    matchId,
     teamAName: teamA,
     teamBName: teamB,
     seriesA,
